@@ -235,54 +235,83 @@ class DiscParse:
 
                 for idx, playlist in enumerate(selected_playlists):
                     console.print(f"[bold green]Scanning playlist {playlist['file']} with duration {int(playlist['duration'] // 3600)} hours {int((playlist['duration'] % 3600) // 60)} minutes {int(playlist['duration'] % 60)} seconds")
-                    playlist_number = playlist['file'].replace(".mpls", "")
+                    playlist_number = os.path.splitext(playlist['file'])[0]
                     playlist_report_path = os.path.join(save_dir, f"Disc{i + 1}_{playlist_number}_FULL.txt")
 
                     if os.path.exists(playlist_report_path):
                         bdinfo_text = playlist_report_path
                     else:
                         try:
-                            bdinfo_executable = None
-                            if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-                                bdinfo_exe_path = f"{base_dir}/bin/BDInfo/BDInfo.exe"
-                                if shutil.which("mono") and os.path.exists(bdinfo_exe_path):
-                                    bdinfo_executable = ['mono', bdinfo_exe_path, path, '-m', playlist['file'], save_dir]
-                                elif shutil.which("bdinfo"):
-                                    bdinfo_executable = ["bdinfo", path, '-m', playlist['file'], save_dir]
-                                elif shutil.which("BDInfo"):
-                                    bdinfo_executable = ["BDInfo", path, '-m', playlist['file'], save_dir]
+                            used_bdinfo_cli = False
+                            bdinfo_cli_path = os.path.join(base_dir, "bin", "BDInfoCli")
+                            bdinfo_cli_report_path = os.path.join(save_dir, f"Disc{i + 1}_BDINFOCLI_FULL.txt")
+                            if os.path.isfile(bdinfo_cli_path):
+                                regenerate_cli_report = True
+                                if os.path.exists(bdinfo_cli_report_path):
+                                    try:
+                                        existing_text = Path(bdinfo_cli_report_path).read_text(encoding="utf-8", errors="replace")
+                                        if "PLAYLIST:" in existing_text:
+                                            regenerate_cli_report = False
+                                    except Exception:
+                                        regenerate_cli_report = True
+                                if regenerate_cli_report:
+                                    console.print(f"[bold green]Scanning {path} with BDInfoCli...[/bold green]")
+                                    command_args = [
+                                        bdinfo_cli_path,
+                                        "-p",
+                                        path,
+                                        "-o",
+                                        bdinfo_cli_report_path,
+                                    ]
+                                    proc = await asyncio.create_subprocess_exec(*command_args)
+                                    await proc.wait()
+                                    if proc.returncode != 0 or not os.path.exists(bdinfo_cli_report_path):
+                                        console.print("[bold red]BDInfoCli failed to generate a report.[/bold red]")
+                                        continue
+                                bdinfo_text = bdinfo_cli_report_path
+                                used_bdinfo_cli = True
+                            if not used_bdinfo_cli:
+                                bdinfo_executable = None
+                                if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+                                    bdinfo_exe_path = f"{base_dir}/bin/BDInfo/BDInfo.exe"
+                                    if shutil.which("mono") and os.path.exists(bdinfo_exe_path):
+                                        bdinfo_executable = ['mono', bdinfo_exe_path, path, '-m', playlist['file'], save_dir]
+                                    elif shutil.which("bdinfo"):
+                                        bdinfo_executable = ["bdinfo", path, '-m', playlist['file'], save_dir]
+                                    elif shutil.which("BDInfo"):
+                                        bdinfo_executable = ["BDInfo", path, '-m', playlist['file'], save_dir]
+                                    else:
+                                        console.print(f"[bold red]BDInfo not found. Please install mono and place BDInfo.exe in {base_dir}/bin/BDInfo/ or install native bdinfo[/bold red]")
+                                        continue
+                                elif sys.platform.startswith('win32'):
+                                    bdinfo_exe_path = f"{base_dir}/bin/BDInfo/BDInfo.exe"
+                                    if os.path.exists(bdinfo_exe_path):
+                                        bdinfo_executable = [bdinfo_exe_path, '-m', playlist['file'], path, save_dir]
+                                    else:
+                                        console.print(f"[bold red]BDInfo.exe not found at {bdinfo_exe_path}[/bold red]")
+                                        console.print(f"[yellow]Please download BDInfo and place BDInfo.exe in {base_dir}/bin/BDInfo/[/yellow]")
+                                        continue
                                 else:
-                                    console.print(f"[bold red]BDInfo not found. Please install mono and place BDInfo.exe in {base_dir}/bin/BDInfo/ or install native bdinfo[/bold red]")
-                                    continue
-                            elif sys.platform.startswith('win32'):
-                                bdinfo_exe_path = f"{base_dir}/bin/BDInfo/BDInfo.exe"
-                                if os.path.exists(bdinfo_exe_path):
-                                    bdinfo_executable = [bdinfo_exe_path, '-m', playlist['file'], path, save_dir]
-                                else:
-                                    console.print(f"[bold red]BDInfo.exe not found at {bdinfo_exe_path}[/bold red]")
-                                    console.print(f"[yellow]Please download BDInfo and place BDInfo.exe in {base_dir}/bin/BDInfo/[/yellow]")
-                                    continue
-                            else:
-                                console.print("[red]Unsupported platform for BDInfo.")
-                                continue
-
-                            if bdinfo_executable:
-                                proc = await asyncio.create_subprocess_exec(
-                                    *bdinfo_executable
-                                )
-                                await proc.wait()
-
-                                if proc.returncode != 0:
-                                    console.print(f"[bold red]BDInfo failed with return code {proc.returncode}[/bold red]")
+                                    console.print("[red]Unsupported platform for BDInfo.")
                                     continue
 
-                                # Rename the output to playlist_report_path
-                                for file in os.listdir(save_dir):
-                                    if file.startswith("BDINFO") and file.endswith(".txt"):
-                                        bdinfo_text = os.path.join(save_dir, file)
-                                        shutil.move(bdinfo_text, playlist_report_path)
-                                        bdinfo_text = playlist_report_path  # Update bdinfo_text to the renamed file
-                                        break
+                                if bdinfo_executable:
+                                    proc = await asyncio.create_subprocess_exec(
+                                        *bdinfo_executable
+                                    )
+                                    await proc.wait()
+
+                                    if proc.returncode != 0:
+                                        console.print(f"[bold red]BDInfo failed with return code {proc.returncode}[/bold red]")
+                                        continue
+
+                                    # Rename the output to playlist_report_path
+                                    for file in os.listdir(save_dir):
+                                        if file.startswith("BDINFO") and file.endswith(".txt"):
+                                            bdinfo_text = os.path.join(save_dir, file)
+                                            shutil.move(bdinfo_text, playlist_report_path)
+                                            bdinfo_text = playlist_report_path  # Update bdinfo_text to the renamed file
+                                            break
                         except Exception as e:
                             console.print(f"[bold red]Error scanning playlist {playlist['file']}: {e}")
                             continue
@@ -295,16 +324,41 @@ class DiscParse:
                                 break
 
                             text = await asyncio.to_thread(Path(bdinfo_text).read_text, encoding="utf-8", errors="replace")
-                            result = text.split("QUICK SUMMARY:", 2)
-                            files = result[0].split("FILES:", 2)[1].split("CHAPTERS:", 2)[0].split("-------------")
-                            result2 = result[1].rstrip(" \n")
-                            result = result2.split("********************", 1)
-                            bd_summary = result[0].rstrip(" \n")
+                            bd_summary = ""
+                            files_section = ""
+                            ext_bd_summary = ""
+                            playlist_block = text
+                            playlist_marker = f"PLAYLIST: {playlist_number}.MPLS"
+                            start_index = text.find(playlist_marker)
+                            if start_index != -1:
+                                next_index = text.find("PLAYLIST:", start_index + len(playlist_marker))
+                                playlist_block = text[start_index:next_index] if next_index != -1 else text[start_index:]
 
-                            result = text.split("[code]", 3)
-                            result2 = result[2].rstrip(" \n")
-                            result = result2.split("FILES:", 1)
-                            ext_bd_summary = result[0].rstrip(" \n")
+                            if "QUICK SUMMARY:" in playlist_block:
+                                result = playlist_block.split("QUICK SUMMARY:", 2)
+                                if len(result) > 1:
+                                    files_split = result[0].split("FILES:", 2)
+                                    if len(files_split) > 1:
+                                        files_parts = files_split[1].split("CHAPTERS:", 2)[0].split("-------------", 2)
+                                        if len(files_parts) > 1:
+                                            files_section = files_parts[1]
+                                        else:
+                                            files_section = files_parts[0]
+                                    result2 = result[1].rstrip(" \n")
+                                    result = result2.split("********************", 1)
+                                    bd_summary = result[0].rstrip(" \n")
+
+                                result = playlist_block.split("[code]", 3)
+                                if len(result) > 2:
+                                    result2 = result[2].rstrip(" \n")
+                                    result = result2.split("FILES:", 1)
+                                    ext_bd_summary = result[0].rstrip(" \n")
+                            else:
+                                bd_summary, files_section, ext_bd_summary = self.parse_bdinfo_cli_report(playlist_block, playlist_number)
+
+                            if not bd_summary:
+                                console.print("[bold red]Unable to parse BDInfo report for playlist data.[/bold red]")
+                                break
 
                             # Save summaries and bdinfo for each playlist
                             if idx == 0:
@@ -316,12 +370,12 @@ class DiscParse:
 
                             # Strip multiple spaces to single spaces before saving
                             bd_summary_cleaned = re.sub(r' +', ' ', bd_summary.strip())
-                            ext_bd_summary_cleaned = re.sub(r' +', ' ', ext_bd_summary.strip())
+                            ext_bd_summary_cleaned = re.sub(r' +', ' ', (ext_bd_summary or bd_summary).strip())
 
                             await asyncio.to_thread(Path(summary_file).write_text, bd_summary_cleaned, encoding="utf-8", errors="replace")
                             await asyncio.to_thread(Path(extended_summary_file).write_text, ext_bd_summary_cleaned, encoding="utf-8", errors="replace")
 
-                            bdinfo = self.parse_bdinfo(bd_summary_cleaned, files[1], path)
+                            bdinfo = self.parse_bdinfo(bd_summary_cleaned, files_section, path)
 
                             # Prompt user for custom edition if conditions are met
                             if len(selected_playlists) > 1:
@@ -370,8 +424,7 @@ class DiscParse:
 
                         except Exception:
                             console.print(traceback.format_exc())
-                            await asyncio.sleep(5)
-                            continue
+                            break
                         break
 
             else:
@@ -403,6 +456,9 @@ class DiscParse:
                 else:
                     file_name = parts[0]
 
+                if not file_name.lower().endswith(".m2ts"):
+                    continue
+
                 m2ts: dict[str, str] = {
                     "file": file_name,
                     "length": parts[2],  # Length is the 3rd column
@@ -410,9 +466,112 @@ class DiscParse:
                 bdinfo_files.append(m2ts)
 
             except Exception as e:
-                console.print(f"Failed to process bdinfo line: {line} -> {e}", markup=False)
+                print(f"Failed to process bdinfo line: {line} -> {e}")
 
         return bdinfo_files
+
+    def parse_bdinfo_cli_report(self, text: str, playlist_number: str) -> tuple[str, str, str]:
+        lines = text.splitlines()
+        disc_title = ""
+        disc_label = ""
+        disc_size = ""
+        playlist_name = ""
+        playlist_length = ""
+        playlist_size = ""
+        playlist_bitrate = ""
+
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("Disc Title:"):
+                disc_title = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Disc Label:"):
+                disc_label = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Disc Size:"):
+                disc_size = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Name:"):
+                playlist_name = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Length:") and not playlist_length:
+                playlist_length = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Size:") and not playlist_size:
+                playlist_size = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("Total Bitrate:") and not playlist_bitrate:
+                playlist_bitrate = stripped.split(":", 1)[1].strip()
+
+        if not playlist_name:
+            playlist_name = f"{playlist_number}.MPLS"
+
+        summary_lines: list[str] = []
+        if disc_title:
+            summary_lines.append(f"Disc Title: {disc_title}")
+        if disc_label:
+            summary_lines.append(f"Disc Label: {disc_label}")
+        if disc_size:
+            summary_lines.append(f"Disc Size: {disc_size}")
+        summary_lines.append(f"Playlist: {playlist_name}")
+        if playlist_size:
+            summary_lines.append(f"Size: {playlist_size}")
+        if playlist_length:
+            summary_lines.append(f"Length: {playlist_length}")
+        if playlist_bitrate:
+            summary_lines.append(f"Total Bitrate: {playlist_bitrate}")
+
+        section = None
+        video_lines: list[str] = []
+        audio_lines: list[str] = []
+        subtitle_lines: list[str] = []
+        files_lines: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            upper = stripped.upper()
+            if upper == "VIDEO:":
+                section = "video"
+                continue
+            if upper == "AUDIO:":
+                section = "audio"
+                continue
+            if upper == "SUBTITLES:":
+                section = "subtitles"
+                continue
+            if upper == "FILES:":
+                section = "files"
+                continue
+            if upper.endswith(":") and upper in ("DISC INFO:", "PLAYLIST REPORT:", "CHAPTERS:"):
+                section = None
+                continue
+            if not stripped or stripped.startswith("Codec") or stripped.startswith("-----"):
+                continue
+            if section == "video":
+                video_lines.append(stripped)
+            elif section == "audio":
+                audio_lines.append(stripped)
+            elif section == "subtitles":
+                subtitle_lines.append(stripped)
+            elif section == "files":
+                if re.match(r"\\d{5}\\.M2TS", stripped, re.IGNORECASE):
+                    files_lines.append(stripped)
+
+        for line in video_lines:
+            parts = re.split(r"\\s{2,}", line)
+            if len(parts) >= 3:
+                summary_lines.append(f"Video: {parts[0].strip()} / {parts[1].strip()} / {parts[2].strip()}")
+            elif len(parts) == 2:
+                summary_lines.append(f"Video: {parts[0].strip()} / {parts[1].strip()}")
+
+        for line in audio_lines:
+            parts = re.split(r"\\s{2,}", line)
+            if len(parts) >= 4:
+                summary_lines.append(f"Audio: {parts[1].strip()} / {parts[0].strip()} / {parts[3].strip()}")
+            elif len(parts) >= 3:
+                summary_lines.append(f"Audio: {parts[1].strip()} / {parts[0].strip()} / {parts[2].strip()}")
+
+        for line in subtitle_lines:
+            parts = re.split(r"\\s{2,}", line)
+            if len(parts) >= 2:
+                summary_lines.append(f"Subtitle: {parts[1].strip()}")
+
+        files_section = "\n".join(files_lines)
+        ext_summary = "\n".join(summary_lines)
+        return "\n".join(summary_lines), files_section, ext_summary
 
     def parse_bdinfo(self, bdinfo_input: str, files: str, path: str) -> dict[str, Any]:
         video_tracks: list[dict[str, Any]] = []
@@ -476,26 +635,31 @@ class DiscParse:
                     l = l.split("(")[0]  # noqa E741
                 l = l.strip()  # noqa E741
                 split1 = l.split(':', 1)[1]
-                split2 = split1.split('/')
+                split2 = [part.strip() for part in split1.split('/') if part.strip()]
+                if len(split2) < 2:
+                    continue
+                audio_info = {
+                    'language': split2[0],
+                    'codec': split2[1],
+                    'channels': "",
+                    'sample_rate': "",
+                    'bitrate': "",
+                    'bit_depth': "",
+                    'atmos_why_you_be_like_this': "",
+                }
                 n = 0
-                if "Atmos" in split2[2].strip():
+                if len(split2) > 2 and "Atmos" in split2[2]:
                     n = 1
-                    fuckatmos = split2[2].strip()
-                else:
-                    fuckatmos = ""
-                try:
-                    bit_depth = split2[n + 5].strip()
-                except Exception:
-                    bit_depth = ""
-                bdinfo['audio'].append({
-                    'language': split2[0].strip(),
-                    'codec': split2[1].strip(),
-                    'channels': split2[n + 2].strip(),
-                    'sample_rate': split2[n + 3].strip(),
-                    'bitrate': split2[n + 4].strip(),
-                    'bit_depth': bit_depth,  # Also DialNorm, but is not in use anywhere yet
-                    'atmos_why_you_be_like_this': fuckatmos,
-                })
+                    audio_info['atmos_why_you_be_like_this'] = split2[2]
+                if len(split2) > n + 2:
+                    audio_info['channels'] = split2[n + 2]
+                if len(split2) > n + 3:
+                    audio_info['sample_rate'] = split2[n + 3]
+                if len(split2) > n + 4:
+                    audio_info['bitrate'] = split2[n + 4]
+                if len(split2) > n + 5:
+                    audio_info['bit_depth'] = split2[n + 5]
+                bdinfo['audio'].append(audio_info)
             elif line.startswith("disc title:"):
                 title = l.split(':', 1)[1]
                 bdinfo['title'] = title
@@ -1085,7 +1249,7 @@ class DiscParse:
                 titles.append(title_data)
 
         except ET.ParseError as e:
-            console.print(f"Error parsing XPL file: {e}", markup=False)
+            print(f"Error parsing XPL file: {e}")
         return titles
 
     def timecode_to_seconds(self, timecode: str) -> int:
