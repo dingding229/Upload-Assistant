@@ -85,7 +85,6 @@ class SHRI(UNIT3D):
         - REMUX detection from filename markers (VU/UNTOUCHED)
         - Italian title substitution from IMDb AKAs
         - Multi-language audio tags (ITA - ENG format using ISO 639-3 codes)
-        - Italian subtitle [SUBS] tag when no Italian audio present
         - Release group tag cleaning and validation
         - DISC region injection
         """
@@ -127,44 +126,33 @@ class SHRI(UNIT3D):
         # Clean audio: remove Dual-Audio and trailing language codes
         audio = await self._get_best_italian_audio_format(meta)
 
-        # Build audio language tag: original -> ITA -> ENG -> others/Multi (4+)
+        # Build audio language tag
         audio_lang_str = ""
         if meta.get("audio_languages"):
             # Normalize all to abbreviated ISO 639-3 codes
             audio_langs_value = meta.get("audio_languages", [])
             audio_langs_raw = cast(list[Any], audio_langs_value) if isinstance(audio_langs_value, list) else []
-            audio_langs = [self._get_language_name(str(lang).upper()) for lang in audio_langs_raw]
+            audio_langs = [self._get_language_name(str(lang)) for lang in audio_langs_raw]
             audio_langs = [lang for lang in audio_langs if lang]  # Remove empty
             audio_langs = list(dict.fromkeys(audio_langs))  # Dedupe preserving order
 
-            orig_lang_iso = meta.get("original_language", "").upper()
-            orig_lang_abbrev = self._get_language_name(orig_lang_iso)
+            num_langs = len(audio_langs)
 
-            result: list[str] = []
-            remaining: list[str] = audio_langs.copy()
+            if num_langs == 1:
+                # One language (ITA or non-ITA)
+                audio_lang_str = audio_langs[0]
 
-            # Priority 1: Original language
-            if orig_lang_abbrev and orig_lang_abbrev in remaining:
-                result.append(orig_lang_abbrev)
-                remaining.remove(orig_lang_abbrev)
+            elif num_langs == 2:
+                # Two languages ("ITA - [lang]" if ITA is present, "[lang] - [lang]" if not)
+                if "ITA" in audio_langs:
+                    other = [lang for lang in audio_langs if lang != "ITA"][0]
+                    audio_lang_str = f"ITA - {other}"
+                else:
+                    audio_lang_str = " - ".join(audio_langs)
 
-            # Priority 2: Italian (if not already added)
-            if "ITA" in remaining:
-                result.append("ITA")
-                remaining.remove("ITA")
-
-            # Priority 3: English (if not already added)
-            if "ENG" in remaining:
-                result.append("ENG")
-                remaining.remove("ENG")
-
-            # Handle remaining: show individually if <=3 total, else add Multi
-            if len(result) + len(remaining) > 3:
-                result.append("Multi")
-            else:
-                result.extend(remaining)
-
-            audio_lang_str = " - ".join(result)
+            elif num_langs >= 3:
+                # Three or more languages, "ITA - MULTI" if ITA is present, "MULTI" only if not)
+                audio_lang_str = "ITA - MULTI" if "ITA" in audio_langs else "MULTI"
 
         effective_type = self.get_effective_type(meta)
 
@@ -226,10 +214,6 @@ class SHRI(UNIT3D):
         # Ensure name is always a string
         if not name:
             name = str(meta.get("name", "UNKNOWN"))
-
-        # Add [SUBS] for Italian subtitles without Italian audio
-        if not self._has_italian_audio(meta) and self._has_italian_subtitles(meta):
-            name = f"{name} [SUBS]"
 
         # Cleanup whitespace
         name = self.WHITESPACE_PATTERN.sub(" ", name).strip()
@@ -295,7 +279,7 @@ class SHRI(UNIT3D):
             "DISC": "26",
             "REMUX": "7",
             "WEBDL": "27",
-            "WEBRIP": "15",
+            "WEBRIP": "51",
             "HDTV": "33",
             "ENCODE": "15",
             "DVDRIP": "15",
@@ -594,30 +578,6 @@ class SHRI(UNIT3D):
                     language_match = title
 
         return country_match or language_match
-
-    def _has_italian_audio(self, meta: dict[str, Any]) -> bool:
-        """Check for Italian audio tracks, excluding commentary"""
-        if "mediainfo" not in meta:
-            return False
-
-        tracks = meta["mediainfo"].get("media", {}).get("track", [])
-        return any(
-            track.get("@type") == "Audio"
-            and self._get_language_code(track) in {"it"}
-            and "commentary" not in str(track.get("Title", "")).lower()
-            for track in tracks[2:]
-        )
-
-    def _has_italian_subtitles(self, meta: dict[str, Any]) -> bool:
-        """Check for Italian subtitle tracks"""
-        if "mediainfo" not in meta:
-            return False
-
-        tracks = meta["mediainfo"].get("media", {}).get("track", [])
-        return any(
-            track.get("@type") == "Text" and self._get_language_code(track) in {"it"}
-            for track in tracks
-        )
 
     def _get_language_name(self, iso_code: str) -> str:
         """Convert ISO language code to abbreviated 3-letter code (ITA, ENG, etc)"""
@@ -1100,7 +1060,7 @@ class SHRI(UNIT3D):
                 tonemapped_text = self._strip_bbcode(tonemapped_header)
 
         if release_group.lower() == "island":
-            base_notes = "Questa è una release interna pubblicata in esclusiva su Shareisland.\nSi prega di non ricaricare questa release su tracker pubblici o privati. Si prega di mantenerla in seed il più a lungo possibile. Grazie!"
+            base_notes = "Release Shareisland 🏴‍☠️\nFalla girare, condividila e contribuisci a mantenerla viva restando in seed il più possibile.\nGrazie per il supporto!"
             if tonemapped_text:
                 release_notes_section = f"""[size=13][b][color=#e8024b]--- RELEASE NOTES ---[/color][/b][/size]
 [size=11][color=#FFFFFF]{base_notes}

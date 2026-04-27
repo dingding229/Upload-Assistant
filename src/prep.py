@@ -23,6 +23,7 @@ try:
     from src.clients import Clients
     from src.console import console
     from src.edition import get_edition
+    from src.exceptions import NoAudioMediaError
     from src.exportmi import exportInfo, get_conformance_error, mi_resolution, validate_mediainfo
     from src.get_disc import DiscInfoManager
     from src.get_name import NameManager
@@ -199,6 +200,16 @@ class Prep:
                         guess_name = bdinfo['title'].replace('-', ' ')
                         untouched_filename = bdinfo['title']
                         filename = str(guessit_fn(re.sub(r"[^0-9a-zA-Z\[\\]]+", " ", guess_name), {"excludes": ["country", "language"]}).get('title', ''))
+
+                    try:
+                        is_hfr = bdinfo['video'][0]['fps'].split()[0] if bdinfo['video'] else "25"
+                        if int(float(is_hfr)) > 30:
+                            meta['hfr'] = True
+                        else:
+                            meta['hfr'] = False
+                    except Exception:
+                        meta['hfr'] = False
+
                 try:
                     meta['search_year'] = guessit_fn(bdinfo['title'])['year']
                 except Exception:
@@ -219,15 +230,8 @@ class Prep:
                     width="OTHER",
                     scan="p",
                 )
-                try:
-                    is_hfr = bdinfo['video'][0]['fps'].split()[0] if bdinfo['video'] else "25"
-                    if int(float(is_hfr)) > 30:
-                        meta['hfr'] = True
-                    else:
-                        meta['hfr'] = False
-                except Exception:
-                    meta['hfr'] = False
-            else:
+
+            elif meta.get('emby', False):
                 meta['resolution'] = "1080p"
 
             meta['sd'] = await video_manager.is_sd(str(meta.get('resolution', '')))
@@ -285,7 +289,7 @@ class Prep:
                     mi = meta['mediainfo']
 
                 meta['dvd_size'] = await self.disc_info_manager.get_dvd_size(meta['discs'], meta.get('manual_dvds'))
-                meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir)
+                meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir, meta)
                 meta['sd'] = await video_manager.is_sd(meta['resolution'])
 
         elif meta['is_disc'] == "HDDVD":
@@ -306,7 +310,7 @@ class Prep:
                 meta['mediainfo'] = mi
             else:
                 mi = meta['mediainfo']
-            meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir)
+            meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir, meta)
             meta['sd'] = await video_manager.is_sd(meta['resolution'])
 
         else:
@@ -378,7 +382,7 @@ class Prep:
                         mi = meta['mediainfo']
 
                     if meta.get('resolution') is None:
-                        meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir)
+                        meta['resolution'], meta['hfr'] = await video_manager.get_resolution(guessit_fn(video), meta['uuid'], base_dir, meta)
 
                     meta['sd'] = await video_manager.is_sd(meta['resolution'])
                 else:
@@ -465,13 +469,19 @@ class Prep:
         if not meta['is_disc'] and not meta.get('emby', False):
             try:
                 valid_mi = validate_mediainfo(meta, debug=meta['debug'])
+            except NoAudioMediaError as e:
+                console.print(f"[red]MediaInfo validation failed: {str(e)}[/red]")
+                raise NoAudioMediaError(f"Upload Assistant does not support no audio media. Details: {str(e)}") from e
             except Exception as e:
                 console.print(f"[red]MediaInfo validation failed: {str(e)}[/red]")
-                raise Exception(f"Upload Assistant does not support no audio media. Details: {str(e)}") from e
+                raise
             if not valid_mi:
                 console.print("[red]MediaInfo validation failed. This file does not contain (Unique ID).")
                 meta['valid_mi'] = False
                 await asyncio.sleep(2)
+
+        mediainfo_tracks = meta.get("mediainfo", {}).get("media", {}).get("track") or []
+        meta["has_multiple_default_subtitle_tracks"] = len([track for track in mediainfo_tracks if track["@type"] == "Text" and track["Default"] == "Yes"]) > 1
 
         # Check if there's a language restriction
         if meta['has_languages'] is not None and not meta.get('emby', False):
@@ -825,6 +835,10 @@ class Prep:
             meta['original_language'] = original_language
             meta['no_ids'] = filename_search
 
+        no_original_language = False
+        if meta.get('original_language', None) is None:
+            no_original_language = True
+
         # if we have all of the ids, search everything all at once
         if int(meta.get('imdb_id') or 0) != 0 and int(meta.get('tvdb_id') or 0) != 0 and int(meta.get('tmdb_id') or 0) != 0 and int(meta.get('tvmaze_id') or 0) != 0:
             meta = await self.metadata_searching_manager.all_ids(meta)
@@ -844,6 +858,11 @@ class Prep:
         # we should have tmdb id one way or another, so lets get data if needed
         if int(meta.get('tmdb_id') or 0) != 0:
             await self.tmdb_manager.set_tmdb_metadata(meta, filename)
+
+        # If there was no original language set before the combined metadata searching, tvdb changes mean we might have set a bad tvdb series name
+        # Now that we have original language, we can safely kill the tvdb series name if it was en original to account for the change
+        if meta.get('tvdb_series_name', None) and meta.get('original_language', 'en') == 'en' and meta.get('tmdb_id', 0) != 0 and no_original_language:
+            meta['tvdb_series_name'] = None
 
         # If there's a mismatch between IMDb and TMDb IDs, try to resolve it
         if meta.get('imdb_mismatch', False) and "subsplease" not in meta.get('uuid', '').lower():
@@ -953,12 +972,14 @@ class Prep:
 
         # lets check for tv movies
         meta['tv_movie'] = False
-        is_tv_movie = meta.get('imdb_info', {}).get('type', '')
-        tv_movie_keywords = ['tv movie', 'tv special', 'tvmovie']
-        if any(re.search(rf'(^|,\s*){re.escape(keyword)}(\s*,|$)', is_tv_movie, re.IGNORECASE) for keyword in tv_movie_keywords):
-            if meta['debug']:
-                console.print(f"[yellow]Identified as TV Movie based on IMDb type: {is_tv_movie}[/yellow]")
-            meta['tv_movie'] = True
+        if meta['imdb_id'] != 0:
+            is_tv_movie = meta.get('imdb_info', {}).get('type', '')
+            if is_tv_movie:
+                tv_movie_keywords = ['tv movie', 'tv special', 'tvmovie']
+                if any(re.search(rf'(^|,\s*){re.escape(keyword)}(\s*,|$)', is_tv_movie, re.IGNORECASE) for keyword in tv_movie_keywords):
+                    if meta['debug']:
+                        console.print(f"[yellow]Identified as TV Movie based on IMDb type: {is_tv_movie}[/yellow]")
+                    meta['tv_movie'] = True
 
         if meta['category'] == "TV" or meta.get('tv_movie', False):
             both_ids_searched = False
