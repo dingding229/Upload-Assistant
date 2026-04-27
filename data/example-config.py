@@ -350,7 +350,7 @@ config = {
 
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: A4K, ACM, AITHER, ANT, AR, ASC, AZ, BHD, BHDTV, BJS, BLU, BT, CBR, CZ, DC, DP, DT, EMUW, FF, FL, FNP, FRIKI, GPW, HDB, HDS, HDT, HHD, HUNO, IHD, IS, ITT, LCD, LDU, LST, LT, LUME, MTV, NBL, OE, OTW, PHD, PT, PTER, PTP, PTS, PTT, R4E, RAS, RF, RTF, SAM, SHRI, SN, SP, SPD, STC, THR, TIK, TL, TLZ, TOS, TTG, TTR, TVC, ULCX, UTP, YOINK, YUS
+        # Available tracker: A4K, ACM, AITHER, ANT, AR, ASC, AZ, BHD, BHDTV, BJS, BLU, BT, CBR, CHDBITS, CZ, DC, DP, DT, EMUW, FF, FL, FNP, FRIKI, GPW, HDB, HDS, HDSKY, HDT, HHD, HUNO, IHD, IS, ITT, LCD, LDU, LST, LT, LUME, MTV, NBL, OE, OTW, OURBITS, PHD, PT, PTER, PTP, PTS, PTT, R4E, RAS, RF, RTF, SAM, SHRI, SN, SP, SPD, SSD, STC, THR, TIK, TL, TLZ, TOS, TTG, TTR, TVC, ULCX, UTP, YOINK, YUS
         # Only add the trackers you want to upload to on a regular basis
         "default_trackers": "",
 
@@ -478,6 +478,16 @@ config = {
             # Example: If set to "MyTag", a release might become: Movie 2003 1080p WEB-DL DDP5.1 H.264-OriginalGroup DUAL-MyTag
             "tag_for_custom_release": "",
         },
+        "CHDBITS": {
+            # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
+            "link_dir_name": "",
+            # for CHDBITS to work you need to export cookies from https://ptchdbits.co/ using https://addons.mozilla.org/en-US/firefox/addon/export-cookies-txt/.
+            # cookies need to be in netscape format and need to be in data/cookies/CHDBITS.txt
+            "passkey": "",
+            "announce_url": "https://ptchdbits.co/announce.php?passkey=<PASSKEY>",
+            "meta_script": "",
+            "meta_timeout": 30,
+        },
         "CZ": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
             "link_dir_name": "",
@@ -583,6 +593,16 @@ config = {
             "anon": False,
             # Set to True if you want to include the full MediaInfo in your upload description or False to include only the most relevant parts.
             "full_mediainfo": False,
+        },
+        "HDSKY": {
+            # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
+            "link_dir_name": "",
+            # for HDSKY to work you need to export cookies from https://hdsky.me/ using https://addons.mozilla.org/en-US/firefox/addon/export-cookies-txt/.
+            # cookies need to be in netscape format and need to be in data/cookies/HDSKY.txt
+            "passkey": "",
+            "announce_url": "https://tracker.hdsky.me/announce.php",
+            "meta_script": "",
+            "meta_timeout": 30,
         },
         "HDT": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
@@ -713,6 +733,16 @@ config = {
             "modq": False,
             "anon": False,
         },
+        "OURBITS": {
+            # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
+            "link_dir_name": "",
+            # for OURBITS to work you need to export cookies from https://ourbits.club/ using https://addons.mozilla.org/en-US/firefox/addon/export-cookies-txt/.
+            # cookies need to be in netscape format and need to be in data/cookies/OURBITS.txt
+            "passkey": "",
+            "announce_url": "https://ourbits.club/announce.php",
+            "meta_script": "",
+            "meta_timeout": 30,
+        },
         "PHD": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
             "link_dir_name": "",
@@ -831,6 +861,18 @@ config = {
             # Select the upload channel, if you don't know what this is, leave it empty.
             # You can also set this manually using the args -ch or --channel, without '@'. Example: @spd -> '-ch spd'.
             "channel": "",
+        },
+        "SSD": {
+            # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
+            "link_dir_name": "",
+            # for SSD to work you need to export cookies from https://springsunday.net/ using https://addons.mozilla.org/en-US/firefox/addon/export-cookies-txt/.
+            # cookies need to be in netscape format and need to be in data/cookies/SSD.txt
+            "passkey": "",
+            "announce_url": "https://on.springsunday.net/announce.php",
+            "anon": True,
+            "offer": True,
+            "meta_script": "",
+            "meta_timeout": 30,
         },
         "STC": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
