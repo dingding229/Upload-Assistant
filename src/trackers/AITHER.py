@@ -1,5 +1,4 @@
 # Upload Assistant © 2025 Audionut & wastaken7 — Licensed under UAPL v1.0
-# import discord
 from typing import Any
 
 from src.console import console
@@ -24,10 +23,15 @@ class AITHER(UNIT3D):
         self.requests_url = f'{self.base_url}/api/requests/filter'
         self.trumping_url = f'{self.base_url}/api/trumping-reports/filter'
         self.banned_groups: list[str] = []
-        pass
 
     async def get_additional_checks(self, meta: dict[str, Any]):
         should_continue = True
+
+        if meta['is_disc'] not in ["BDMV", "DVD"] and not await self.common.check_language_requirements(
+            meta, self.tracker, languages_to_check=["english"], check_audio=True, check_subtitle=True, original_language=True, original_required=True
+        ):
+            return False
+
         if meta['valid_mi'] is False:
             console.print(f"[bold red]No unique ID in mediainfo, skipping {self.tracker} upload.")
             return False
@@ -35,9 +39,18 @@ class AITHER(UNIT3D):
         return should_continue
 
     async def get_additional_data(self, meta: dict[str, Any]):
+        hdr_value = str(meta.get('hdr') or '')
+        has_hdr10p = 'HDR10+' in hdr_value
+
         data = {
             'mod_queue_opt_in': await self.get_flag(meta, 'modq'),
         }
+        if "DV" in hdr_value:
+            data['dv'] = 1
+        if has_hdr10p:
+            data['hdr10p'] = 1
+        elif not has_hdr10p and any(flag in hdr_value for flag in ['HDR', 'HLG']):
+            data['hdr'] = 1
 
         return data
 
