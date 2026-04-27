@@ -1,4 +1,212 @@
-__version__ = "v7.0.1"
+__version__ = "v7.1.5"
+
+"""
+Release Notes for version v7.1.5 (2026-04-27):
+
+# ## What's Changed
+# 
+# * ulcx: remove hybrid from web by @Audionut in 3a4e5e6
+# * Only allow MKV for non-disc on BLU (#1342) by @glibbright in 39c7e8c
+# * Allow modified SD content upload at BHD (#1343) by @glibbright in 1954346
+# * Add more banned groups to BHD tracker (#1344) by @glibbright in 2e9e7c0
+# * Add validation for media container types in BHD (#1346) by @glibbright in e355dcb
+# * ANT: just return api message by @Audionut in b33e4c4
+# * validate mediainfo debugging by @Audionut in 994e314
+# * fix aither flags by @Audionut in 6ab394f
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.1.4...v7.1.5
+"""
+
+
+"""
+Release Notes for version v7.1.4 (2026-04-16):
+
+# ## What's Changed
+# 
+# * ANT: key in header by @Audionut in 27cb44e
+# * DP: banned groups by @Audionut in d1da3dc
+# * BHD: encode settings by @Audionut in 4066131
+# * fix tvmovie handle when no imdb by @Audionut in 323b3e3
+# * fix: ffmpeg round to even scale by @Audionut in 2f614c5
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.1.3...v7.1.4
+"""
+
+
+"""
+Release Notes for version v7.1.3 (2026-04-14):
+
+# ## What's Changed
+# 
+# * mkbrr: add windows arm support by @Audionut in 0fabdb0
+# * fix: bdmv playlist scoring by @Audionut in a5a7693
+# * OTW: only 1 resolution per episode by @Audionut in daef192
+# * fix(ASC): missing TMDB data for description building (#1331) by @wastaken7 in 8040523
+# * feat: add support for CBR pending torrents API (#1332) by @wastaken7 in f5e420b
+# * ANT bdinfo update (#1334) by @Audionut in cf42a25
+# * Improved season pack pattern check for anime (#1335) by @Khoa Pham in 2d1b0cf
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.1.2...v7.1.3
+"""
+
+
+"""
+Release Notes for version v7.1.2 (2026-03-28):
+
+# 
+# ### NOTE:
+# - Bugix release
+# 
+# ---
+# 
+# ## What's Changed
+# 
+# * fix: compose file to follow health endpoint limit by @Audionut in d551035
+# * Fix mod_queue_opt_in for all UNIT3D trackers, remove #import discord (#1291) by @おはよう in 38ce348
+# * fix(BJS): media runtime (#1290) by @wastaken7 in 7df0d14
+# * fix(HDS): remove incompatible BBCode tags (#1302) by @wastaken7 in 8b48a6f
+# * fix(DC): remove incompatible BBCode tags (#1303) by @wastaken7 in 88b2212
+# * fix(SPD): remove incompatible BBCode tags (#1304) by @wastaken7 in d31a196
+# * fix(TL): remove incompatible BBCode tags (#1305) by @wastaken7 in 574fbf6
+# * fix(LUME): enforce MKV container requirement for non-disc uploads (#1306) by @wastaken7 in e6192b9
+# * fix(SPD): handle missing subtitle and audio languages gracefully (#1307) by @wastaken7 in d015934
+# * fix(OE): update default type_id mapping (Other/Unknown) (#1308) by @wastaken7 in 1495a88
+# * fix(HDS): duplicate search pagination and minimum resolution check (#1309) by @wastaken7 in db3c983
+# * fix: Ignore the MediaInfo template for DVDs (#1310) by @wastaken7 in 421bab0
+# * fix(SHRI): remove SUBS tag and update island release shoutout (#1313) by @TheDarkMan in b204df0
+# * fix(EMUW): duplicate detection  (#1299) by @HichamLL04 in 0570e4b
+# * fix scan detection by @Audionut in 14c491f
+# * PTP: fix login on cookie expiration by @Audionut in 126045c
+# * PTP: fix expired cookie handling by @Audionut in 105a92f
+# * Aither: add hdr10p handling by @Audionut in 1d607db
+# * AITHER: fix HDR/HDR10P mutually exclusive values (#1323) by @9Oc in db2fa5a
+# * add DARKROOM to region.py (#1319) by @wastaken7 in 86a532d
+# * THR: fix image rehosting by @Audionut in 6f2574d
+# * skip tmdb images from existing descriptions by @Audionut in ceee681
+# * LDU: don't except from a nonsense weeb decision by @Audionut in 60b8a9a
+# * fix: languages use stable deduping by @Audionut in 01cb0c3
+# * TL: fix anilist url handling by @Audionut in 1a7ab78
+# * retry anilist.co by @Audionut in f2b0a52
+# * fix: catch daily episodes in dupe checking by @Audionut in d3bccf0
+# * NBL: language handling by @Audionut in 71960c0
+# * fix: edition not upper by @Audionut in e7f49e6
+# * ANT: fix tag handling by @Audionut in db27855
+# * release notes by @Audionut in 7efa0c3
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.1.1...v7.1.2
+"""
+
+
+"""
+Release Notes for version v7.1.1 (2026-03-13):
+
+# 
+# ### NOTE:
+# - Bugix release
+# - webui health endpoint now has a rate limit of 70 requests per hour.
+# 
+# ---
+# 
+# ## What's Changed
+# 
+# * original language mapping (#1278) by @Audionut in cb8964c
+# * fix: override default rate limit for health endpoint by @Audionut in a6ed307
+# * Fix continue anyway on banned group detection (#1275) by @mrz948 in 829a6d6
+# * fix(IS): cartoon category and upload success_text (#1284) by @wastaken7 in f277cb6
+# * AITHER: support new DV HDR flags (#1287) by @markhc in 84b6f7f
+# * release notes by @Audionut in c5d0b9c
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.1.0...v7.1.1
+"""
+
+
+"""
+Release Notes for version v7.1.0 (2026-03-03):
+
+# 
+# ### NOTE:
+# - This project is in development freeze. Only critical bugs will be addressed moving forward.
+# - More details on the future of Upload Assistant will be available at a later date.
+# - Thanks to all who have contributed to this project, to everyone who has used Upload Assistant and everyone who has shared this project for the benefit of others.
+# - A special thankyou to all of the site staffers who have shown great patience and understanding, during the development of Upload Assistant. Each and everyone one of you, who fixed issues, and quietly addressed those same issues with me. I can't emphasize enough how that has allowed me to focus entirely on fixing the issues code side, and the boost to motivation that it gave.
+# - To those of you who I will not name, working in tandem to bring new features to the ecosystem, you rock.
+# - Specifically, to everyone at Aither. You're unwavering support has been truly appreciated.
+# - Last but certainly not least, a huge thanks to @wastaken7, who contributed greatly to the success of Upload Assistant. Not only did wasteken7 being a whole suite of new site support, but he persistently maintained all of those sites. The sheer amount of refactoring work on the codebase, to increase the ease of development cannot be overstated.
+# - Upload Assistant is not dead. I look forward to sharing a new chapter in the future.
+# 
+# 
+# ## Release notes:
+# - thatonePRguy added some features to the webui, including file browser searching and better mobile view support.
+# - Spy-God added DesiTorrents support
+# - maksii refactored the docker handling and documentation
+# - some tvdb related fixes
+# - Updated NBL api support
+# 
+# ---
+# 
+# ## What's Changed
+# 
+# * BJS: change TMDb output, skip tags for existing groups (#1229) by @wastaken7 in 42fc2cc
+# * feat(webui): add search functionality to file browser (#1228) by @PRguy in f35a556
+# * Fix mkbrr: Resolve TypeError (int vs str) and support system binary path (#1233) by @Spy-God in e036ff7
+# * feat(webui): add mobile responsive layout for main and config views (#1231) by @PRguy in 652e135
+# * Add DesiTorrents (DT) tracker support (#1224) by @Spy-God in a76b6ac
+# * BJS(fix): Don't skip tags (#1239) by @wastaken7 in 231797a
+# * shutdown (#1238) by @Audionut in c9dbd01
+# * refactor(docker): enhance Docker setup and documentation (#1245) by @maksii in 452bcff
+# * reset tvdb series name by @Audionut in 2014d84
+# * SHRI(fix): WEBRIP type (#1255) by @TheDarkMan in 0991595
+# * Update bluray_com.py to fix extract_cover_images (#1252) by @9Oc in 6818dbd
+# * fix(bdmv): manual resolution handling by @Audionut in f8a3679
+# * fix(tvdb): handle when year not in alias by @Audionut in df93bbd
+# * CBR: enable request search (#1267) by @wastaken7 in ccb96f0
+# * BLU: update banned groups (#1263) by @vmt5m3mjb in 92febfe
+# * GPW: Add avc codec_map (#1256) by @xslidi in 7f58728
+# * Aither: fix language requirements (#1264) by @vmt5m3mjb in 557dd86
+# * A4K: fix language requirements (#1265) by @vmt5m3mjb in ebc6ab7
+# * LST: fix language requirements (#1266) by @vmt5m3mjb in 49fd729
+# * TVC: Add constants and refactor description building methods (#1261) by @Lusephur in 8a1ee44
+# * GPW: fix new group torrent uploading failure (#1258) by @xslidi in 3dc255b
+# * A4K: adding foreign language changes & img hosters (#1260) by @llm in 316d950
+# * DC: Add option to disable metadata-based names for torrents (#1268) by @wastaken7 in e5dffce
+# * AvistaZ Network: Fix raw DVD names (#1269) by @wastaken7 in da8bff5
+# * fix(DVD): scantype handling (#1270) by @Audionut in 5c51bf3
+# * NBL api update (#1274) by @Audionut in d2e31b4
+# * release notes by @Audionut in e26f94f
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.0.2...v7.1.0
+"""
+
+
+"""
+Release Notes for version v7.0.2 (2026-02-07):
+
+# ## What's Changed
+# 
+# * fix(audio): set object based channel layout as LFE when not proper channel layout by @Audionut in f087110
+# * fix(meta): allow override automatic daily show decision by @Audionut in 0bec16e
+# * Add bilibili to services (#1203) by @WOSSFOSS in 5fabd3f
+# * RTF: improve api key update by @Audionut in 989d7ca
+# * fix(audio): bad copy/paste by @Audionut in 15d7ac7
+# * fix(meta): title objects in none by @Audionut in 82b6294
+# * fix(cleanup): handle asyncio cancellation by @Audionut in 1bfa698
+# * DP(feat) - remove -NOGROUP (#1210) by @emb3r-zzz in acd339c
+# * add 'Brasil Paralelo' service (#1209) by @wastaken7 in 1aa1e12
+# * fix(ASC, BT): skip upload if IMDb is missing (#1208) by @wastaken7 in 150acc1
+# * fix(bdmv): refactor playlist handling (#1213) by @Audionut in f826c64
+# * bump bdinfo version by @Audionut in 77aac01
+# * BHD: don't error on missing details id by @Audionut in 219c4f8
+# * fix(tvdb): series name from external id based search by @Audionut in 1599f7f
+# * Webui prompt fixes (#1212) by @Audionut in bdff010
+# * Add additional content quality checks (#1164) by @WOSSFOSS in 8983f4e
+# * feat(webui): Add desclink and descfile webui assistance to select and validate arguments. (#1182) by @maksii in 040f6d0
+# * SHRI: Fixed the audio language tag building following rules (#1207) by @gekiryu in 6c20128
+# * bump bdinfo by @Audionut in bdc14a9
+# * simplify playlist handling by @Audionut in 08f29ec
+# 
+# **Full Changelog**: https://github.com/Audionut/Upload-Assistant/compare/v7.0.1...v7.0.2
+"""
+
 
 """
 Release Notes for version v7.0.1 (2026-02-01):
