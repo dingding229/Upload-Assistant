@@ -11,6 +11,7 @@ from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import aiofiles
+import cli_ui
 import httpx
 import langcodes
 import pycountry
@@ -407,7 +408,8 @@ class BJS:
         return br_rating or us_rating or ''
 
     async def get_tags(self) -> str:
-        tags = ''
+        tags = ""
+
         genres_data: list[dict[str, Any]] = self.main_tmdb_data.get('genres', [])
         genre_names: list[str] = []
 
@@ -427,7 +429,8 @@ class BJS:
                 )
 
         if not tags:
-            tags = await self.common.async_input(prompt=f'Digite os gêneros (no formato do {self.tracker}): ')
+             tags_raw = await asyncio.to_thread(cli_ui.ask_string, f'Digite os gêneros (no formato do {self.tracker}): ')
+             tags = (tags_raw or "").strip()
 
         return tags
 
@@ -971,19 +974,10 @@ class BJS:
         """
         Extracts runtime from metadata and converts total minutes into hours and minutes.
         """
-        raw_runtime = meta.get('runtime', 0)
-
-        try:
-            total_minutes = max(0, int(raw_runtime))
-        except (ValueError, TypeError):
-            total_minutes = 0
-
+        total_minutes = meta.get("video_duration", 0)
         hours, minutes = divmod(total_minutes, 60)
 
-        return {
-            'hours': hours,
-            'minutes': minutes
-        }
+        return hours, minutes
 
     def get_release_date(self) -> str:
         raw_date_string = self.main_tmdb_data.get('first_air_date') or self.main_tmdb_data.get('release_date')
@@ -1106,7 +1100,8 @@ class BJS:
             'Por favor, insira manualmente (separados por vírgula): '
         )
 
-        user_input = await self.common.async_input(prompt=prompt_message)
+        user_input_raw = await asyncio.to_thread(cli_ui.ask_string, f'{prompt_message}')
+        user_input = (user_input_raw or "").strip()
         if user_input:
             return user_input
 
@@ -1207,37 +1202,40 @@ class BJS:
         category = meta['category']
         original_title, brazilian_title = self.get_title(meta)
         width, height = self.get_resolution(meta)
+        hours, minutes = self.get_runtime(meta)
 
         data: dict[str, Any] = {}
 
         # These fields are common across all upload types
-        data.update({
-            'audio': await self.get_audio(meta),
-            'auth': BJS.secret_token,
-            'codecaudio': self.get_audio_codec(meta),
-            'codecvideo': self.get_video_codec(meta),
-            'duracaoHR': self.get_runtime(meta).get('hours'),
-            'duracaoMIN': self.get_runtime(meta).get('minutes'),
-            'duracaotipo': 'selectbox',
-            'fichatecnica': await self.build_description(meta),
-            'formato': self.get_container(meta),
-            'idioma': self.get_languages(),
-            'imdblink': self.get_imdblink(meta),
-            'qualidade': self.get_bitrate(meta),
-            'release': meta.get('service_longname', ''),
-            'remaster_title': self.build_remaster_title(meta),
-            'resolucaoh': height,
-            'resolucaow': width,
-            'sinopse': await self.get_overview(),
-            'submit': 'true',
-            'tags': await self.get_tags(),
-            'tipolegenda': await self.get_subtitle(meta),
-            'title': original_title,
-            'titulobrasileiro': brazilian_title,
-            'traileryoutube': self.get_trailer(meta),
-            'type': self.get_type(meta),
-            'year': self.get_year(meta),
-        })
+        data.update(
+            {
+                "audio": await self.get_audio(meta),
+                "auth": BJS.secret_token,
+                "codecaudio": self.get_audio_codec(meta),
+                "codecvideo": self.get_video_codec(meta),
+                "duracaoHR": str(hours),
+                "duracaoMIN": str(minutes),
+                "duracaotipo": "selectbox",
+                "fichatecnica": await self.build_description(meta),
+                "formato": self.get_container(meta),
+                "idioma": self.get_languages(),
+                "imdblink": self.get_imdblink(meta),
+                "qualidade": self.get_bitrate(meta),
+                "release": meta.get("service_longname", ""),
+                "remaster_title": self.build_remaster_title(meta),
+                "resolucaoh": height,
+                "resolucaow": width,
+                "sinopse": await self.get_overview(),
+                "submit": "true",
+                "tags": await self.get_tags(),
+                "tipolegenda": await self.get_subtitle(meta),
+                "title": original_title,
+                "titulobrasileiro": brazilian_title,
+                "traileryoutube": self.get_trailer(meta),
+                "type": self.get_type(meta),
+                "year": self.get_year(meta),
+            }
+        )
 
         # These fields are common in movies and TV shows, even if it's anime
         if category == 'MOVIE':
@@ -1364,7 +1362,7 @@ class BJS:
 
         Accepted formats:
             IMDb: tt12345
-            TMDb: movie12345 or tv12345
+            TMDb: movie/12345 or tv/12345
         """
         imdb_info = dict(meta.get("imdb_info", {}))
         imdbid = str(imdb_info.get("imdbID", ""))
@@ -1375,7 +1373,7 @@ class BJS:
         tmdb_id = meta.get("tmdb_id")
 
         if category in ["MOVIE", "TV"] and tmdb_id:
-            return f"{category}{tmdb_id}".lower()
+            return f"{category}/{tmdb_id}".lower()
 
         return ""
 
@@ -1388,9 +1386,8 @@ class BJS:
             console.print(
                 f"{self.tracker}: [bold red]Sinopse não encontrada no TMDb. Por favor, insira manualmente.[/bold red]"
             )
-            user_input = await self.common.async_input(
-                prompt=f"{self.tracker}: [green]Digite a sinopse:[/green]"
-            )
+            user_input_raw = await asyncio.to_thread(cli_ui.ask_string, f'"{self.tracker}: [green]Digite a sinopse:[/green]"')
+            user_input = (user_input_raw or "").strip()
             if user_input:
                 return user_input
             return 'N/A'

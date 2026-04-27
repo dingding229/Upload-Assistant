@@ -327,8 +327,7 @@ class HDB:
             # Match url to verify successful upload
             match = re.match(r".*?hdbits\.org/details\.php\?id=(\d+)&uploaded=(\d+)", str(up.url))
             if match:
-                details_url = f"https://hdbits.org/details.php?id={match.group(1)}"
-                meta['tracker_status'][self.tracker]['status_message'] = details_url
+                meta['tracker_status'][self.tracker]['status_message'] = match.group(0)
                 if id_match := re.search(r"(id=)(\d+)", urlparse(str(up.url)).query):
                     id = id_match.group(2)
                     await self.download_new_torrent(id, torrent_file_path)
@@ -558,7 +557,7 @@ class HDB:
         desc = desc.replace("[ol]", "").replace("[/ol]", "")
         desc = desc.replace("[*]", "* ")
         desc = bbcode.convert_spoiler_to_hide(desc)
-        desc = bbcode.convert_comparison_to_plain(desc, 1000)
+        desc = bbcode.convert_comparison_to_centered(desc, 1000)
         desc = re.sub(r"(\[img=\d+)]", "[img]", desc, flags=re.IGNORECASE)
         desc = re.sub(r"\[/size\]|\[size=\d+\]", "", desc, flags=re.IGNORECASE)
         desc_parts.append(desc)
@@ -568,6 +567,7 @@ class HDB:
             hdbimg_bbcode = await self.hdbimg_upload(meta)
             if hdbimg_bbcode is not None:
                 if meta.get('comparison', False):
+                    desc_parts.append("[center]")
                     desc_parts.append("[b]")
                     comparison_groups = meta.get('comparison_groups')
                     if isinstance(comparison_groups, dict):
@@ -588,8 +588,9 @@ class HDB:
 
                     desc_parts.append("\n\n")
                     desc_parts.append(f"{hdbimg_bbcode}")
+                    desc_parts.append("[/center]")
                 else:
-                    desc_parts.append(f"{hdbimg_bbcode}")
+                    desc_parts.append(f"[center]{hdbimg_bbcode}[/center]")
         else:
             images_value = meta.get('image_list', [])
             images_list: list[dict[str, Any]] = []
@@ -603,11 +604,13 @@ class HDB:
                     ]
                 )
             if images_list:
+                desc_parts.append("[center]")
                 screen_limit = int(meta.get('screens', 0) or 0)
                 for each in range(len(images_list[:screen_limit])):
                     img_url = str(images_list[each].get('img_url', ''))
                     web_url = str(images_list[each].get('web_url', ''))
                     desc_parts.append(f"[url={web_url}][img]{img_url}[/img][/url]")
+                desc_parts.append("[/center]")
 
         if self.signature is not None:
             desc_parts.append(self.signature)
