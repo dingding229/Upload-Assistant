@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional, Union, cast
 
 import aiofiles
+import cli_ui
 import httpx
 from bs4 import BeautifulSoup
 from pymediainfo import MediaInfo
@@ -110,7 +111,7 @@ class ASC:
                 self.season_tmdb_data = local_results['season']
             else:
                 tasks_to_run.append(
-                    ('season', self.tmdb_manager.get_tmdb_localized_data(meta, data_type='season', language='pt-BR', append_to_response=''))
+                    ('season', self.tmdb_manager.get_tmdb_localized_data(meta, data_type='season', language='pt-BR', append_to_response='credits'))
                 )
 
         if meta.get('category') == 'TV' and not meta.get('tv_pack', False):
@@ -118,7 +119,7 @@ class ASC:
                 self.episode_tmdb_data = local_results['episode']
             else:
                 tasks_to_run.append(
-                    ('episode', self.tmdb_manager.get_tmdb_localized_data(meta, data_type='episode', language='pt-BR', append_to_response=''))
+                    ('episode', self.tmdb_manager.get_tmdb_localized_data(meta, data_type='episode', language='pt-BR', append_to_response='credits'))
                 )
 
         if tasks_to_run:
@@ -394,7 +395,8 @@ class ASC:
         overview: str = season_tmdb.get("overview", "") or main_tmdb.get("overview", "")
         if not overview:
             console.print(f"{self.tracker}: [bold red]Sinopse não encontrada no TMDb. Por favor, insira manualmente.[/bold red]")
-            user_input = await self.common.async_input(prompt=f"{self.tracker}: [green]Digite a sinopse:[/green]")
+            user_input_raw = await asyncio.to_thread(cli_ui.ask_string, f'"{self.tracker}: [green]Digite a sinopse:[/green]"')
+            user_input = (user_input_raw or "").strip()
             overview = user_input or "Sinopse não encontrada."
         await append_section('BARRINHA_SINOPSE', overview)
 
@@ -542,7 +544,8 @@ class ASC:
         )
 
         if not tags:
-            tags = meta.get('genre') or await self.common.async_input(prompt=f'Digite os gêneros (no formato do {self.tracker}): ')
+            tags_raw = meta.get('genre') or await asyncio.to_thread(cli_ui.ask_string, f'Digite os gêneros (no formato do {self.tracker}): ')
+            tags = (tags_raw or "").strip()
 
         return tags
 

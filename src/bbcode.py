@@ -587,6 +587,13 @@ class BBCODE:
         desc = re.sub(r"\[\/?spoiler[\s\S]*?\]", "", desc, flags=re.IGNORECASE)
         return desc
 
+    def remove_color(self, desc: str) -> str:
+        """
+        Removes [color=...] and [/color] tags.
+        """
+        pattern = r"\[/?color(?:=[^\]]*)?\]"
+        return re.sub(pattern, "", desc, flags=re.IGNORECASE)
+
     def convert_named_spoiler_to_normal_spoiler(self, desc: str) -> str:
         desc = re.sub(r'(\[spoiler=[^]]+])', '[spoiler]', desc, flags=re.IGNORECASE)
         return desc
@@ -692,33 +699,6 @@ class BBCODE:
                         line = []
             output_str = '\n'.join(output)
             new_bbcode = f"[center]{' | '.join(comp_sources)}\n{output_str}[/center]"
-            desc = desc.replace(comp, new_bbcode)
-        return desc
-
-    def convert_comparison_to_plain(self, desc: str, max_width: int) -> str:
-        comparisons = re.findall(r"\[comparison=[\s\S]*?\[\/comparison\]", desc)
-        for comp in comparisons:
-            line: list[str] = []
-            output: list[str] = []
-            comp_sources = comp.split(']', 1)[0].replace('[comparison=', '').strip()
-            comp_sources = re.split(r"\s*,\s*", comp_sources)
-            comp_images = comp.split(']', 1)[1].replace('[/comparison]', '').replace(',', '\n').replace(' ', '\n')
-            comp_images = re.findall(r"(https?:\/\/.*\.(?:png|jpg))", comp_images, flags=re.IGNORECASE)
-            screens_per_line = len(comp_sources)
-            img_size = int(max_width / screens_per_line)
-            if img_size > 350:
-                img_size = 350
-            for img in comp_images:
-                img = img.strip()
-                if img != "":
-                    bb = f"[url={img}][img={img_size}]{img}[/img][/url]"
-                    line.append(bb)
-                    if len(line) == screens_per_line:
-                        output.append(''.join(line))
-                        line = []
-            output_str = '\n'.join(output)
-            header = ' | '.join(comp_sources)
-            new_bbcode = f"{header}\n{output_str}" if header else output_str
             desc = desc.replace(comp, new_bbcode)
         return desc
 

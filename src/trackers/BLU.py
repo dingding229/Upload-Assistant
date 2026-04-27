@@ -21,19 +21,33 @@ class BLU(UNIT3D):
         self.requests_url = f'{self.base_url}/api/requests/filter'
         self.torrent_url = f'{self.base_url}/torrents/'
         self.banned_groups = [
-            '[Oj]', '3LTON', '4yEo', 'ADE', 'AFG', 'AniHLS', 'AnimeRG', 'AniURL', 'AOC', 'AROMA', 'aXXo', 'B3LLUM',
+            '[Oj]', '3LTON', '4yEo', 'ADE', 'AFG', 'AniHLS', 'AnimeRG', 'AniURL', 'AROMA', 'aXXo', 'B3LLUM',
             'BHDStudio', 'Brrip', 'CHD', 'CM8', 'CrEwSaDe', 'd3g', 'DeadFish', 'DNL', 'DTLegacy', 'ELiTE',
-            'eSc', 'EZTV', 'EZTV.RE', 'F13', 'FaNGDiNG0', 'FGT', 'Flights', 'FRDS', 'FUM', 'HAiKU', 'hallowed',
+            'eSc', 'EZTV', 'EZTV.RE', 'F13', 'FaNGDiNG0', 'FGT', 'Flights', 'flower', 'FRDS', 'FUM', 'HAiKU', 'hallowed',
             'HD2DVD', 'HDS', 'HDTime', 'Hi10', 'ION10', 'iPlanet', 'JIVE', 'KiNGDOM', 'LAMA', 'Leffe', 'LEGi0N',
-            'LOAD', 'MeGusta', 'mHD', 'mSD', 'NhaNc3', 'nHD', 'nikt0', 'NOIVTC', 'nSD', 'PiRaTeS', 'playBD',
+            'LOAD', 'MeGusta', 'mHD', 'mSD', 'NhaNc3', 'nHD', 'nikt0', 'NOIVTC', 'nSD', 'OFT', 'PiRaTeS', 'playBD',
             'PlaySD', 'playXD', 'PRODJi', 'RAPiDCOWS', 'RARBG', 'RetroPeeps', 'RDN', 'REsuRRecTioN', 'RMTeam', 'SANTi', 'SasukeducK',
-            'SicFoI', 'SPASM', 'SPDVD', 'STUTTERSHIT', 'Telly', 'TheFarm', 'TM', 'TRiToN', 'UPiNSMOKE', 'URANiME', 'WAF',
+            'SicFoI', 'SPASM', 'SPDVD', 'STUTTERSHIT', 'Telly', 'TheFarm', 'TM', 'TRiToN', 'UPiNSMOKE', 'URANiME', 'VN_Foxcore', 'WAF',
             'WKS', 'x0r', 'xRed', 'XS', 'YIFY', 'ZKBL', 'ZmN', 'ZMNT',
         ]
         pass
 
     async def get_additional_checks(self, meta: dict[str, Any]) -> bool:
         should_continue = True
+
+        if not meta.get('is_disc'):
+            container = meta.get('container', '').lower()
+            type_name = meta.get('type', '').upper()
+            allowed = ['mkv']
+            if type_name == 'HDTV':
+                allowed.append('ts')
+            if type_name in ['WEBDL', 'HDTV'] and "DV" in meta.get('hdr', '') and "HDR" not in meta.get('hdr', ''):
+                allowed.append('mp4')
+
+            if container not in allowed:
+                console.print(f"[bold red]For this release, {self.tracker} requires one of the following containers: {', '.join([a.upper() for a in allowed])}[/bold red]")
+                return False
+
         if (
             meta['type'] in ['ENCODE', 'REMUX']
             and 'HDR' in meta.get('hdr', '')
@@ -47,7 +61,7 @@ class BLU(UNIT3D):
             if cli_ui.ask_yes_no("Is this a derived layer release?", default=False):
                 meta['tracker_status'][self.tracker]['other'] = True
 
-        if meta['type'] not in ['WEBDL'] and not meta['is_disc'] and meta.get('tag', "") in ['CMRG', 'EVO', 'TERMiNAL', 'ViSION']:
+        if meta['type'] not in ['WEBDL'] and not meta['is_disc'] and meta.get('tag', "") in ['AOC', 'CMRG', 'EVO', 'TERMiNAL', 'ViSION']:
             if not meta['unattended'] or (meta['unattended'] and meta.get('unattended_confirm', False)):
                 console.print(f'[bold red]Group {meta["tag"]} is only allowed for raw type content[/bold red]')
                 if cli_ui.ask_yes_no("Do you want to upload anyway?", default=False):
@@ -94,7 +108,7 @@ class BLU(UNIT3D):
 
     async def get_additional_data(self, meta: dict[str, Any]) -> dict[str, Any]:
         data = {
-            'modq': await self.get_flag(meta, 'modq'),
+            'mod_queue_opt_in': await self.get_flag(meta, 'modq'),
         }
 
         return data
