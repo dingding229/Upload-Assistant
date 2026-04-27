@@ -63,6 +63,7 @@ Many thanks to all who have contributed.
 |Friki|FRIKI|FunFile|FF|
 |GreatPosterWall|GPW|hawke-uno|HUNO|
 |HDBits|HDB|HD-Space|HDS|
+|CHDBits|CHDBITS|HDSky|HDSKY|
 |HD-Torrents|HDT|HomieHelpDesk|HHD|
 |ImmortalSeed|IS|InfinityHD|IHD|
 |ItaTorrents|ITT|LastDigitalUnderground|LDU|
@@ -70,6 +71,7 @@ Many thanks to all who have contributed.
 |LST|LST|Luminarr|LUME|
 |MoreThanTV|MTV|Nebulance|NBL|
 |OldToonsWorld|OTW|OnlyEncodes+|OE|
+|OurBits|OURBITS|SpringSunDay|SSD|
 |PassThePopcorn|PTP|PolishTorrent|PTT|
 |Portugas|PT|PrivateHD|PHD|
 |PTerClub|PTER|PTSKIT|PTS|

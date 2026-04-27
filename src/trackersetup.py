@@ -27,6 +27,7 @@ from src.trackers.BJS import BJS
 from src.trackers.BLU import BLU
 from src.trackers.BT import BT
 from src.trackers.CBR import CBR
+from src.trackers.CHDBITS import CHDBITS
 from src.trackers.COMMON import COMMON
 from src.trackers.CZ import CZ
 from src.trackers.DC import DC
@@ -1338,9 +1339,9 @@ class TRACKER_SETUP:
 
 tracker_class_map: dict[str, type[Any]] = {
     'A4K': A4K, 'ACM': ACM, 'AITHER': AITHER, 'ANT': ANT, 'AR': AR, 'ASC': ASC, 'AZ': AZ, 'BHD': BHD, 'BHDTV': BHDTV, 'BJS': BJS, 'BLU': BLU, 'BT': BT, 'CBR': CBR,
-    'CZ': CZ, 'DC': DC, 'DP': DP, 'DT': DT, 'EMUW': EMUW, 'FNP': FNP, 'FF': FF, 'FL': FL, 'FRIKI': FRIKI, 'GPW': GPW, 'HDB': HDB, 'HDS': HDS, 'HDT': HDT, 'HHD': HHD, 'HUNO': HUNO, 'ITT': ITT,
-    'IHD': IHD, 'IS': IS, 'LCD': LCD, 'LDU': LDU, 'LST': LST, 'LT': LT, 'LUME': LUME, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PHD': PHD, 'PT': PT, 'PTP': PTP, 'PTER': PTER, 'PTS': PTS, 'PTT': PTT,
-    'R4E': R4E, 'RAS': RAS, 'RF': RF, 'RTF': RTF, 'SAM': SAM, 'SHRI': SHRI, 'SN': SN, 'SP': SP, 'SPD': SPD, 'STC': STC, 'THR': THR,
+    'CZ': CZ, 'DC': DC, 'DP': DP, 'DT': DT, 'EMUW': EMUW, 'FNP': FNP, 'FF': FF, 'FL': FL, 'FRIKI': FRIKI, 'GPW': GPW, 'HDB': HDB, 'HDS': HDS, 'HDSKY': HDSKY, 'HDT': HDT, 'HHD': HHD, 'HUNO': HUNO, 'ITT': ITT,
+    'IHD': IHD, 'IS': IS, 'LCD': LCD, 'LDU': LDU, 'LST': LST, 'LT': LT, 'LUME': LUME, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'OURBITS': OURBITS, 'PHD': PHD, 'PT': PT, 'PTP': PTP, 'PTER': PTER, 'CHDBITS': CHDBITS, 'PTS': PTS, 'PTT': PTT,
+    'R4E': R4E, 'RAS': RAS, 'RF': RF, 'RTF': RTF, 'SAM': SAM, 'SHRI': SHRI, 'SN': SN, 'SP': SP, 'SPD': SPD, 'SSD': SSD, 'STC': STC, 'THR': THR,
     'TIK': TIK, 'TL': TL, 'TLZ': TLZ, 'TOS': TOS, 'TVC': TVC, 'TTG': TTG, 'TTR': TTR, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS
 }
 
