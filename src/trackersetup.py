@@ -41,7 +41,6 @@ from src.trackers.FRIKI import FRIKI
 from src.trackers.GPW import GPW
 from src.trackers.HDB import HDB
 from src.trackers.HDS import HDS
-from src.trackers.HDSKY import HDSKY
 from src.trackers.HDT import HDT
 from src.trackers.HHD import HHD
 from src.trackers.HUNO import HUNO
@@ -57,7 +56,6 @@ from src.trackers.MTV import MTV
 from src.trackers.NBL import NBL
 from src.trackers.OE import OE
 from src.trackers.OTW import OTW
-from src.trackers.OURBITS import OURBITS
 from src.trackers.PHD import PHD
 from src.trackers.PT import PT
 from src.trackers.PTER import PTER
@@ -73,7 +71,6 @@ from src.trackers.SHRI import SHRI
 from src.trackers.SN import SN
 from src.trackers.SP import SP
 from src.trackers.SPD import SPD
-from src.trackers.SSD import SSD
 from src.trackers.STC import STC
 from src.trackers.THR import THR
 from src.trackers.TIK import TIK
@@ -1358,5 +1355,5 @@ other_api_trackers = {
 }
 
 http_trackers = {
-    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDSKY', 'HDT', 'IS', 'MTV', 'OURBITS', 'PHD', 'PTER', 'CHDBITS', 'PTS', 'SSD', 'TTG'
+    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDT', 'IS', 'MTV', 'PHD', 'PTER', 'PTS', 'TTG'
 }
