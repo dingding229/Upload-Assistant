@@ -100,7 +100,19 @@ class TRACKER_SETUP:
         return tracker_class(self.config)
 
     def trackers_enabled(self, meta: Meta) -> list[str]:
-        trackers_value = meta['trackers'] if meta.get('trackers') is not None else self.config['TRACKERS']['default_trackers']
+        meta_trackers = meta.get('trackers')
+        default_trackers = self.config['TRACKERS'].get('default_trackers', '')
+
+        # Prefer explicit per-run trackers when provided, otherwise fall back to
+        # configured default trackers. Treat empty string/list the same as unset.
+        if isinstance(meta_trackers, str):
+            trackers_value = meta_trackers if meta_trackers.strip() else default_trackers
+        elif isinstance(meta_trackers, list):
+            trackers_value = meta_trackers if len(meta_trackers) > 0 else default_trackers
+        elif meta_trackers is None:
+            trackers_value = default_trackers
+        else:
+            trackers_value = default_trackers
 
         if isinstance(trackers_value, str):
             trackers_list = trackers_value.split(',')

@@ -228,6 +228,44 @@ async def process_trackers(
                     print_tracker_result(tracker, tracker_class, status, False)
                     console.print(f"[red]{tracker} upload failed or returned data error.[/red]")
 
+        elif tracker_class is not None:
+            # Fallback path: if a tracker is registered in tracker_class_map but was
+            # accidentally omitted from api/http tracker groups, still attempt upload
+            # instead of silently skipping it.
+            console.print(
+                f"[yellow]Tracker {tracker} is registered but not categorized in api/http groups. "
+                "Using generic upload fallback.[/yellow]"
+            )
+            tracker_status = cast(StatusDict, meta.get('tracker_status') or {})
+            upload_status = cast(Mapping[str, Any], tracker_status.get(tracker, {})).get('upload', False)
+            if upload_status:
+                try:
+                    is_uploaded = False
+                    try:
+                        upload_start_time = time.time()
+                        is_uploaded = await tracker_class.upload(meta, disctype_value)
+                        upload_duration = time.time() - upload_start_time
+                        meta[f'{tracker}_upload_duration'] = upload_duration
+                    except Exception as e:
+                        console.print(f"[red]Upload failed: {e}")
+                        console.print(traceback.format_exc())
+                        return
+                except Exception:
+                    console.print(traceback.format_exc())
+                    return
+
+                if is_uploaded is None:
+                    console.print(f"[yellow]Warning: {tracker_class.tracker} upload method returned None instead of boolean. Treating as failed upload.[/yellow]")
+                    is_uploaded = False
+
+                status = cast(StatusDict, meta.get('tracker_status') or {}).get(tracker_class.tracker, {})
+                if is_uploaded and 'status_message' in status and "data error" not in str(status['status_message']):
+                    await client.add_to_client(meta, tracker_class.tracker)
+                    print_tracker_result(tracker, tracker_class, status, True)
+                else:
+                    print_tracker_result(tracker, tracker_class, status, False)
+                    console.print(f"[red]{tracker} upload failed or returned data error.[/red]")
+
         elif tracker == "MANUAL":
             if meta['unattended']:
                 do_manual = True
