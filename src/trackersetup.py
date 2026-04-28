@@ -1367,5 +1367,5 @@ other_api_trackers = {
 }
 
 http_trackers = {
-    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDT', 'IS', 'MTV', 'PHD', 'PTER', 'PTS', 'TTG'
+    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CHDBITS', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDSKY', 'HDT', 'IS', 'MTV', 'OURBITS', 'PHD', 'PTER', 'PTS', 'SSD', 'TTG'
 }
