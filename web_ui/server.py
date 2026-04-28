@@ -28,6 +28,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.security import safe_join
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+
 import web_ui.auth as auth_mod
 from flask_session import Session
 
@@ -488,6 +489,12 @@ def _cleanup_duplicate_sessions(username: str) -> None:
 # Supported video file extensions for WebUI file browser
 SUPPORTED_VIDEO_EXTS = {'.mkv', '.mp4', '.ts'}
 
+# Supported description file extensions for WebUI description file browser
+SUPPORTED_DESC_EXTS = {'.txt', '.nfo', '.md'}
+
+# Regex for splitting filenames on common separators (dots, dashes, underscores, spaces)
+_BROWSE_SEARCH_SEP_RE = re.compile(r'[\s.\-_]+')
+
 # Lock to prevent concurrent in-process uploads (avoids cross-session interference)
 inproc_lock = threading.Lock()
 
@@ -862,13 +869,14 @@ def _debug_process_snapshot(session_id: Optional[str] = None) -> dict[str, Any]:
         return {"error": "failed to build snapshot"}
 
 
-class BrowseItem(TypedDict):
+class BrowseItem(TypedDict, total=False):
     """Serialized representation of an entry returned by the browse API."""
 
     name: str
     path: str
     type: Literal["folder", "file"]
     children: Union[list["BrowseItem"], None]
+    subtitle: str  # Optional hint  (eg, when parent path when names collide)
 
 
 class ConfigItem(TypedDict, total=False):
@@ -1116,43 +1124,27 @@ def set_runtime_browse_roots(browse_roots: str) -> None:
     _runtime_browse_roots = browse_roots
 
 
-def _load_config_from_file(path: Path) -> dict[str, Any]:
+def _load_config_from_file(path: Path) -> dict[str, Any] | None:
+    """Load and return the ``config`` dict from a Python config file.
+
+    Only files inside the repository ``data/`` directory with a ``.py``
+    extension are accepted.  No ownership or permission checks are
+    performed — the file lives in a user-controlled directory and the app
+    already writes to it freely via ``config_update``.
+
+    Returns None on error (file missing, invalid path, parse error, or no valid
+    config dict).  Returns {} for a valid file that defines config = {}.
+    """
     if not path.exists():
-        return {}
+        return None
 
     # Restrict to the repository `data` directory and ensure .py extension.
     repo_data_dir = Path(__file__).resolve().parent.parent / "data"
     try:
         if not path.resolve().is_relative_to(repo_data_dir.resolve()) or path.suffix != ".py":
-            return {}
+            return None
     except Exception:
-        return {}
-
-    # Basic permissions check: ensure file is readable and not world-writable (on Unix-like; on Windows, minimal check)
-    try:
-        stat_info = path.stat()
-        # On Windows, check if file is not hidden and readable
-        if os.name == 'nt':
-            # Windows: check if not hidden (FILE_ATTRIBUTE_HIDDEN = 2)
-            if getattr(stat_info, 'st_file_attributes', 0) & 2:  # Hidden
-                return {}
-        else:
-            # Unix-like: check ownership and permissions. Only call os.getuid()
-            # on platforms that expose it (non-Windows). This avoids raising
-            # AttributeError on Windows.
-            if hasattr(os, 'getuid'):
-                try:
-                    if stat_info.st_uid != os.getuid() or (stat_info.st_mode & 0o022):
-                        return {}
-                except Exception:
-                    return {}
-            else:
-                # If getuid is not available, fall back to a conservative
-                # permissions check using the mode bits only.
-                if (stat_info.st_mode & 0o022):
-                    return {}
-    except Exception:
-        return {}
+        return None
 
     try:
         with open(path, encoding='utf-8') as f:
@@ -1165,9 +1157,15 @@ def _load_config_from_file(path: Path) -> dict[str, Any]:
                         config_value = ast.literal_eval(node.value)
                         if isinstance(config_value, dict):
                             return config_value
-        return {}
-    except Exception:
-        return {}
+        console.print(
+            f"[yellow]Config file {path.name} does not contain a valid 'config' dict assignment.[/yellow]"
+        )
+        return None
+    except Exception as exc:
+        console.print(
+            f"[yellow]Failed to parse config file {path.name}: {exc}[/yellow]"
+        )
+        return None
 
 
 def _json_safe(value: Any) -> Any:
@@ -2108,6 +2106,7 @@ def config_page():
 
 
 @app.route("/api/health")
+@limiter.limit("70 per hour", key_func=get_remote_address)
 def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "success": True, "message": "Upload Assistant Web UI is running"})
@@ -2387,10 +2386,32 @@ def browse_roots():
     if not roots:
         return jsonify({"error": "Browsing is not configured", "success": False}), 400
 
+    # First pass: collect all display names to detect duplicates
+    name_to_roots: dict[str, list[str]] = {}
+    for root in roots:
+        display_name = os.path.basename(root.rstrip(os.sep)) or root
+        if display_name not in name_to_roots:
+            name_to_roots[display_name] = []
+        name_to_roots[display_name].append(root)
+
+    # Second pass: build items with subtitles when needed
     items: list[BrowseItem] = []
     for root in roots:
         display_name = os.path.basename(root.rstrip(os.sep)) or root
-        items.append({"name": display_name, "path": root, "type": "folder", "children": []})
+        item: BrowseItem = {"name": display_name, "path": root, "type": "folder", "children": []}
+
+        # Add subtitle if multiple roots share the same folder name
+        if len(name_to_roots.get(display_name, [])) > 1:
+            # Show parent path or drive letter
+            parent = os.path.dirname(root.rstrip(os.sep))
+            if parent:
+                # On Windows, show drive letter + parent; on Unix, show parent path
+                item["subtitle"] = parent
+            else:
+                # Fallback to full path if no parent (e.g., drive root)
+                item["subtitle"] = root
+
+        items.append(item)
 
     # If caller used a bearer token, require it to be valid.
     bearer = _get_bearer_from_header()
@@ -2415,9 +2436,25 @@ def config_options():
     example_path = base_dir / "data" / "example-config.py"
     config_path = base_dir / "data" / "config.py"
 
-    example_config = _load_config_from_file(example_path)
+    example_config = _load_config_from_file(example_path) or {}
     user_config = _load_config_from_file(config_path)
     comments_map, subsection_map = _extract_example_metadata(example_path)
+
+    # Determine config load status so the UI can warn the user
+    # instead of silently showing defaults.
+    config_warning: Optional[str] = None
+    if not config_path.exists():
+        config_warning = (
+            "No config.py found — showing example defaults. "
+            "Configure your settings and save, or place your config.py "
+            "into the mounted data/ directory."
+        )
+    elif user_config is None:
+        config_warning = (
+            "config.py exists but could not be loaded — showing example defaults. "
+            "Check the container logs for details. The file may have a syntax error "
+            "or may not contain a valid 'config' dict."
+        )
 
     sections: list[ConfigSection] = []
 
@@ -2425,7 +2462,7 @@ def config_options():
         if not isinstance(example_section, dict):
             continue
 
-        user_section = user_config.get(section_name, {})
+        user_section = (user_config or {}).get(section_name, {})
         items = _build_config_items(example_section, user_section, comments_map, subsection_map, [str(section_name)])
 
         # Add special client list items to DEFAULT section
@@ -2474,7 +2511,10 @@ def config_options():
                         client_types.add(client_type_item.get("value", "unknown"))
             sections[-1]["client_types"] = sorted(client_types, key=lambda x: (x != "qbit", x))
 
-    return jsonify({"success": True, "sections": sections})
+    result: dict[str, Any] = {"success": True, "sections": sections}
+    if config_warning:
+        result["config_warning"] = config_warning
+    return jsonify(result)
 
 
 @app.route("/api/torrent_clients")
@@ -2491,7 +2531,7 @@ def torrent_clients():
     base_dir = Path(__file__).parent.parent
     config_path = base_dir / "data" / "config.py"
 
-    user_config = _load_config_from_file(config_path)
+    user_config = _load_config_from_file(config_path) or {}
 
     # Get clients only from user config
     user_clients = user_config.get("TORRENT_CLIENTS", {})
@@ -2522,7 +2562,7 @@ def config_update():
     example_path = base_dir / "data" / "example-config.py"
     config_path = base_dir / "data" / "config.py"
 
-    example_config = _load_config_from_file(example_path)
+    example_config = _load_config_from_file(example_path) or {}
     example_value = _get_nested_value(example_config, path)
 
     # Special handling for client lists that don't exist in example config
@@ -2541,7 +2581,7 @@ def config_update():
         # Remove the key from config if it exists
         try:
             # Load prior value for audit
-            prior_config = _load_config_from_file(config_path)
+            prior_config = _load_config_from_file(config_path) or {}
             prior_value = _get_nested_value(prior_config, path)
 
             source = config_path.read_text(encoding="utf-8")
@@ -2561,7 +2601,7 @@ def config_update():
     prior_value = None
     try:
         # Load prior value for audit
-        prior_config = _load_config_from_file(config_path)
+        prior_config = _load_config_from_file(config_path) or {}
         prior_value = _get_nested_value(prior_config, path)
 
         source = config_path.read_text(encoding="utf-8")
@@ -2685,6 +2725,7 @@ def api_tokens():
 def browse_path():
     """Browse filesystem paths"""
     requested = request.args.get("path", "")
+    file_filter = request.args.get("filter", "video")  # 'video' or 'desc'
     try:
         path = _resolve_browse_path(requested)
     except ValueError as e:
@@ -2746,11 +2787,16 @@ def browse_path():
                 try:
                     is_dir = os.path.isdir(full_path)
 
-                    # Skip files that are not supported video formats
+                    # Skip files based on filter type
                     if not is_dir:
                         _, ext = os.path.splitext(item.lower())
-                        if ext not in SUPPORTED_VIDEO_EXTS:
-                            continue
+                        if file_filter == "desc":
+                            if ext not in SUPPORTED_DESC_EXTS:
+                                continue
+                        else:
+                            # Default to video filter
+                            if ext not in SUPPORTED_VIDEO_EXTS:
+                                continue
 
                     items.append({"name": item, "path": full_path, "type": "folder" if is_dir else "file", "children": [] if is_dir else None})
                 except (PermissionError, OSError):
@@ -2782,6 +2828,124 @@ def browse_path():
         console.print(f"Error browsing {path}: {e}", markup=False)
         console.print(traceback.format_exc(), markup=False)
         return jsonify({"error": "Error browsing path", "success": False}), 500
+
+
+@app.route("/api/browse_search")
+def browse_search():
+    """Search filesystem for files/folders matching a query string"""
+    query = (request.args.get("q") or "").strip()
+    file_filter = request.args.get("filter", "video")
+    try:
+        max_results = min(int(request.args.get("max_results", "100")), 500)
+        if max_results < 1:
+            max_results = 100
+    except (ValueError, TypeError):
+        max_results = 100
+
+    if not query:
+        return jsonify({"success": True, "items": [], "query": ""})
+
+    bearer = _get_bearer_from_header()
+    if bearer:
+        if not _token_is_valid(bearer):
+            return jsonify({"success": False, "error": "Forbidden (invalid token)"}), 403
+    else:
+        if not _is_authenticated():
+            return jsonify({"success": False, "error": "Authentication required (web session)"}), 401
+        if not _verify_csrf_header() or not _verify_same_origin():
+            return jsonify({"success": False, "error": "CSRF/Origin validation failed"}), 403
+
+    roots = _get_browse_roots()
+    if not roots:
+        return jsonify({"success": False, "error": "Browsing is not configured"}), 400
+
+    # Split on common separators
+    query_tokens = [t for t in _BROWSE_SEARCH_SEP_RE.split(query.lower()) if t]
+    if not query_tokens:
+        return jsonify({"success": True, "items": [], "query": query})
+
+    def name_matches(name: str) -> bool:
+        """Check if query tokens appear as whole-word ordered subsequence in the name."""
+        name_tokens = [t for t in _BROWSE_SEARCH_SEP_RE.split(name.lower()) if t]
+        pos = 0
+        for qt in query_tokens:
+            found = False
+            while pos < len(name_tokens):
+                if name_tokens[pos] == qt:
+                    pos += 1
+                    found = True
+                    break
+                pos += 1
+            if not found:
+                return False
+        return True
+
+    allowed_exts = SUPPORTED_DESC_EXTS if file_filter == "desc" else SUPPORTED_VIDEO_EXTS
+    items: list[BrowseItem] = []
+
+    try:
+        for root in roots:
+            root_abs = os.path.abspath(root)
+            if not os.path.isdir(root_abs):
+                continue
+            try:
+                for dirpath, dirnames, filenames in os.walk(root_abs):
+                    # Skip hidden dirs
+                    dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+
+                    # Check dirs
+                    for dirname in dirnames:
+                        if name_matches(dirname):
+                            full_path = os.path.join(dirpath, dirname)
+                            try:
+                                _assert_safe_resolved_path(full_path)
+                            except ValueError:
+                                continue
+                            items.append({"name": dirname, "path": full_path, "type": "folder", "children": []})
+                            if len(items) >= max_results:
+                                break
+
+                    if len(items) >= max_results:
+                        break
+
+                    # Check files
+                    for filename in filenames:
+                        if filename.startswith("."):
+                            continue
+                        if not name_matches(filename):
+                            continue
+                        _, ext = os.path.splitext(filename.lower())
+                        if ext not in allowed_exts:
+                            continue
+                        full_path = os.path.join(dirpath, filename)
+                        try:
+                            _assert_safe_resolved_path(full_path)
+                        except ValueError:
+                            continue
+                        items.append({"name": filename, "path": full_path, "type": "file", "children": None})
+                        if len(items) >= max_results:
+                            break
+
+                    if len(items) >= max_results:
+                        break
+            except PermissionError:
+                continue
+            except Exception as e:
+                console.print(f"Error searching in {root}: {e}", markup=False)
+                continue
+
+            if len(items) >= max_results:
+                break
+
+        # Sort by folders first and then alphabetically
+        items.sort(key=lambda x: (0 if x.get("type") == "folder" else 1, (x.get("name") or "").lower()))
+
+        return jsonify({"success": True, "items": items, "query": query, "count": len(items), "truncated": len(items) >= max_results})
+
+    except Exception as e:
+        console.print(f"Error in browse_search: {e}", markup=False)
+        console.print(traceback.format_exc(), markup=False)
+        return jsonify({"error": "Error searching files", "success": False}), 500
 
 
 @app.route("/api/execute", methods=["POST", "OPTIONS"])
@@ -3016,25 +3180,39 @@ def execute_command():
                     try:
                         orig_ask_yes_no = _cli_ui.ask_yes_no
 
-                        def wrapped_ask_yes_no(question: str, default: bool = False) -> bool:
-                            with contextlib.suppress(Exception):
-                                wrapped_print(question)
-                            # Wait for a response or cancellation
-                            while True:
-                                if cancel_event.is_set():
-                                    raise EOFError()
-                                try:
-                                    resp = input_queue.get(timeout=0.5)
-                                except queue.Empty:
-                                    continue
-                                except Exception:
-                                    raise
-                                resp = (resp or "").strip().lower()
-                                if resp in ("y", "yes"):
-                                    return True
-                                if resp in ("n", "no"):
-                                    return False
-                                return default
+                        def wrapped_ask_yes_no(*args, default: bool = False, **kwargs) -> bool:
+                                # Support both signatures used across the codebase:
+                                #   ask_yes_no(question, default=...)
+                                #   ask_yes_no(color, question, default=...)
+                                # Extract the question and default value from args/kwargs.
+                                if len(args) >= 2:
+                                    question = args[1]
+                                elif len(args) == 1:
+                                    question = args[0]
+                                else:
+                                    question = kwargs.get('question', '')
+
+                                # If default was passed positionally (third arg), use it.
+                                default_val = args[2] if len(args) >= 3 else kwargs.get('default', default)
+
+                                with contextlib.suppress(Exception):
+                                    wrapped_print(str(question))
+                                # Wait for a response or cancellation
+                                while True:
+                                    if cancel_event.is_set():
+                                        raise EOFError()
+                                    try:
+                                        resp = input_queue.get(timeout=0.5)
+                                    except queue.Empty:
+                                        continue
+                                    except Exception:
+                                        raise
+                                    resp = (resp or "").strip().lower()
+                                    if resp in ("y", "yes"):
+                                        return True
+                                    if resp in ("n", "no"):
+                                        return False
+                                    return default_val
 
                         _cli_ui.ask_yes_no = wrapped_ask_yes_no
                         # Save original ask_yes_no so external cleaners (eg. /api/kill)

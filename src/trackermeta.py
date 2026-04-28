@@ -84,7 +84,8 @@ class TrackerMetaManager:
 
 async def prompt_user_for_confirmation(message: str) -> bool:
     try:
-        response = input(f"{message} (Y/n): ").strip().lower()
+        response_raw = cli_ui.ask_string(f"{message} (Y/n): ")
+        response = (response_raw or "").strip().lower()
         return response in ["y", "yes", ""]
     except EOFError:
         sys.exit(1)
@@ -152,6 +153,9 @@ async def check_images_concurrently(imagelist: Sequence[ImageDict], meta: Meta) 
         # Handle when pixhost url points to web_url and convert to raw_url
         if img_url.startswith("https://pixhost.to/show/"):
             img_url = img_url.replace("https://pixhost.to/show/", "https://img1.pixhost.to/images/", 1)
+
+        if "tmdb.org" in img_url:
+            return None
 
         # Verify the image link
         try:
@@ -697,7 +701,8 @@ async def update_metadata_from_tracker(
                             console.print("[bold green]Successfully grabbed description from HDB")
                             console.print(f"HDB Description content:\n{description[:1000]}.....", markup=False)
                             console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
-                            edit_choice = input("Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: ")
+                            edit_choice_raw = cli_ui.ask_string("Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: ")
+                            edit_choice = (edit_choice_raw or "").strip().lower()
 
                             if edit_choice.lower() == 'e':
                                 edited_description = click.edit(description)
