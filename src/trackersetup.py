@@ -28,6 +28,9 @@ from src.trackers.BLU import BLU
 from src.trackers.BT import BT
 from src.trackers.CBR import CBR
 from src.trackers.CHDBITS import CHDBITS
+from src.trackers.HDSKY import HDSKY
+from src.trackers.OURBITS import OURBITS
+from src.trackers.SSD import SSD
 from src.trackers.COMMON import COMMON
 from src.trackers.CZ import CZ
 from src.trackers.DC import DC
@@ -1367,5 +1370,5 @@ other_api_trackers = {
 }
 
 http_trackers = {
-    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CHDBITS', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDSKY', 'HDT', 'IS', 'MTV', 'OURBITS', 'PHD', 'PTER', 'PTS', 'SSD', 'TTG'
+    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDT', 'IS', 'MTV', 'PHD', 'PTER', 'CHDBITS', 'HDSKY', 'OUTBITS', 'SSD', 'TTG'
 }
