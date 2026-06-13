@@ -372,11 +372,11 @@ class SSD(COMMON):
         parts = []
         
         tag = meta.get('tag', '').lstrip('-')
-        declaration_map = {"HHWEB": "[b][quote][img=100x50]https://img1.pixhost.cc/images/9789/656115101_hh.png[/img]\n[color=#f29d38]HHClub[/color]官组作品，[color=#f29d38]感谢[/color]原制作者发布。[/quote][/b]",
-                           "CHDWEB": "[b][quote][img=100x50]https://img1.pixhost.cc/images/9788/656111976_chdbits.png[/img]\n[i][color=red]CHD[/color]Bits[/i]官组作品，[i][color=red]感谢[/color][/i] 原制作者发布！[/quote][/b]",
-                           "CHDBits": "[b][quote][img=100x50]https://img1.pixhost.cc/images/9788/656111976_chdbits.png[/img]\n[i][color=red]CHD[/color]Bits[/i]官组作品，[i][color=red]感谢[/color][/i] 原制作者发布！[/quote][/b]",
-                           "ADWeb": "[b][quote][img=144x34]https://img1.pixhost.cc/images/9788/656113858_aud.png[/img]\n[b]Audiences[/b]官组作品，[color=#ffa32d]感谢[/color]原制作者发布！[/quote][/b]",
-                           "MTeam": "[b][quote][img=120x37]https://img1.pixhost.cc/images/9788/656113860_mt.png[/img]\n[color=orange]MTeam[/color]官组作品，[color=orange]感谢[/color]原制作者发布！[/quote][/b]"}
+        declaration_map = {"HHWEB": "[b][quote][img=100x50]https://img1.pixhost.to/images/9789/656115101_hh.png[/img]\n[color=#f29d38]HHClub[/color]官组作品，[color=#f29d38]感谢[/color]原制作者发布。[/quote][/b]",
+                           "CHDWEB": "[b][quote][img=100x50]https://img1.pixhost.to/images/9788/656111976_chdbits.png[/img]\n[i][color=red]CHD[/color]Bits[/i]官组作品，[i][color=red]感谢[/color][/i] 原制作者发布！[/quote][/b]",
+                           "CHDBits": "[b][quote][img=100x50]https://img1.pixhost.to/images/9788/656111976_chdbits.png[/img]\n[i][color=red]CHD[/color]Bits[/i]官组作品，[i][color=red]感谢[/color][/i] 原制作者发布！[/quote][/b]",
+                           "ADWeb": "[b][quote][img=144x34]https://img1.pixhost.to/images/9788/656113858_aud.png[/img]\n[b]Audiences[/b]官组作品，[color=#ffa32d]感谢[/color]原制作者发布！[/quote][/b]",
+                           "MTeam": "[b][quote][img=120x37]https://img1.pixhost.to/images/9788/656113860_mt.png[/img]\n[color=orange]MTeam[/color]官组作品，[color=orange]感谢[/color]原制作者发布！[/quote][/b]"}
         if tag in declaration_map:
              parts.append(declaration_map[tag])
 

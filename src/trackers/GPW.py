@@ -48,7 +48,7 @@ class GPW:
         self.approved_image_hosts = ['kshare', 'pixhost', 'ptpimg', 'pterclub', 'ilikeshots', 'imgbox']
         self.url_host_mapping = {
             'kshare.club': 'kshare',
-            'pixhost.cc': 'pixhost',
+            'pixhost.to': 'pixhost',
             'imgbox.com': 'imgbox',
             'ptpimg.me': 'ptpimg',
             'img.pterclub.com': 'pterclub',
@@ -202,7 +202,7 @@ class GPW:
         return title if title and title != meta.get('title') else ''
 
     async def check_image_hosts(self, meta: dict[str, Any]) -> None:
-        # Rule: 2.2.1. Screenshots: They have to be saved at kshare.club, pixhost.cc, ptpimg.me, img.pterclub.com, yes.ilikeshots.club, imgbox.com, s3.pterclub.com
+        # Rule: 2.2.1. Screenshots: They have to be saved at kshare.club, pixhost.to, ptpimg.me, img.pterclub.com, yes.ilikeshots.club, imgbox.com, s3.pterclub.com
         await self.rehost_images_manager.check_hosts(
             meta,
             self.tracker,

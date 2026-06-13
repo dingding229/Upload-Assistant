@@ -739,7 +739,7 @@ class PTP:
     async def check_image_hosts(self, meta: dict[str, Any]) -> None:
         url_host_mapping = {
             "ptpimg.me": "ptpimg",
-            "pixhost.cc": "pixhost",
+            "pixhost.to": "pixhost",
         }
 
         await self.rehost_images_manager.check_hosts(

@@ -151,8 +151,8 @@ async def check_images_concurrently(imagelist: Sequence[ImageDict], meta: Meta) 
             image_dict['web_url'] = img_url
 
         # Handle when pixhost url points to web_url and convert to raw_url
-        if img_url.startswith("https://pixhost.cc/show/"):
-            img_url = img_url.replace("https://pixhost.cc/show/", "https://img1.pixhost.cc/images/", 1)
+        if img_url.startswith("https://pixhost.to/show/"):
+            img_url = img_url.replace("https://pixhost.to/show/", "https://img1.pixhost.to/images/", 1)
 
         if "tmdb.org" in img_url:
             return None
@@ -241,8 +241,8 @@ async def check_images_concurrently(imagelist: Sequence[ImageDict], meta: Meta) 
 
 async def check_image_link(url: str, timeout: Optional[aiohttp.ClientTimeout] = None) -> bool:
     # Handle when pixhost url points to web_url and convert to raw_url
-    if url.startswith("https://pixhost.cc/show/"):
-        url = url.replace("https://pixhost.cc/show/", "https://img1.pixhost.cc/images/", 1)
+    if url.startswith("https://pixhost.to/show/"):
+        url = url.replace("https://pixhost.to/show/", "https://img1.pixhost.to/images/", 1)
     if timeout is None:
         timeout = aiohttp.ClientTimeout(total=20, connect=10, sock_connect=10)
 

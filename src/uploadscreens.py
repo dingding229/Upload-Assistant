@@ -319,7 +319,7 @@ async def upload_image_task(args: Sequence[Any]) -> dict[str, Any]:
                 return {'status': 'failed', 'reason': 'Invalid JSON response'}
 
         elif img_host == "pixhost":
-            url = "https://api.pixhost.cc/images"
+            url = "https://api.pixhost.to/images"
             try:
                 data = {
                     'content_type': '0',
