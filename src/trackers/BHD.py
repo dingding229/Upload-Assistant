@@ -42,7 +42,7 @@ class BHD:
         url_host_mapping = {
             "ibb.co": "imgbb",
             "ptpimg.me": "ptpimg",
-            "pixhost.to": "pixhost",
+            "pixhost.cc": "pixhost",
             "imgbox.com": "imgbox",
             "beyondhd.co": "bhd",
             "imagebam.com": "bam",

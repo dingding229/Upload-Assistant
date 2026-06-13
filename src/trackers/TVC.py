@@ -468,7 +468,7 @@ class TVC:
             "ibb.co": "imgbb",
             "ptpimg.me": "ptpimg",
             "imgbox.com": "imgbox",
-            "pixhost.to": "pixhost",
+            "pixhost.cc": "pixhost",
             "imagebam.com": "bam",
             "onlyimage.org": "onlyimage",
         }

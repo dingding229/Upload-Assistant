@@ -1102,7 +1102,7 @@ class Prep:
                 # and if we getting bluray/dvd images, we'll rehost them
                     url_host_mapping = {
                         "ibb.co": "imgbb",
-                        "pixhost.to": "pixhost",
+                        "pixhost.cc": "pixhost",
                         "imgbox.com": "imgbox",
                     }
 

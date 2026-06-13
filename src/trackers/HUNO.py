@@ -94,7 +94,7 @@ class HUNO(UNIT3D):
         url_host_mapping = {
             "ibb.co": "imgbb",
             "ptpimg.me": "ptpimg",
-            "pixhost.to": "pixhost",
+            "pixhost.cc": "pixhost",
             "imgbox.com": "imgbox",
             "imagebam.com": "bam",
         }
