@@ -6,10 +6,9 @@ from bs4 import BeautifulSoup
 import bencodepy
 import cli_ui
 import subprocess
-import shlex
-import asyncio
 
 from src.trackers.COMMON import COMMON
+from src.ptgen_api import get_ptgen_meta
 
 
 class SSD(COMMON):
@@ -117,37 +116,7 @@ class SSD(COMMON):
             return None
 
     async def get_external_meta(self, meta):
-        result = {"bbcode": "", "trans_title": [], "douban_url": ""}
-        if not self.meta_script:
-            return result
-        imdb_id = str(meta.get('imdb_id', '')).strip()
-        arg = f"tt{imdb_id.replace('tt', '').zfill(7)}" if imdb_id and imdb_id != '0' else meta.get("douban_url")
-        if not arg:
-            return result
-        try:
-            cmdline = shlex.split(self.meta_script) + [str(arg).strip()]
-            proc = await asyncio.create_subprocess_exec(
-                *cmdline,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=self.meta_timeout)
-            output = stdout.decode('utf-8').strip()
-            if output:
-                result["bbcode"] = output
-                m = re.search(r'^[ \t]*◎译　　名[ \t　]+(.+)$', output, flags=re.M)
-                if m:
-                    result["trans_title"] = [
-                        p.strip()
-                        for p in re.split(r'\s*/\s*', m.group(1).strip())
-                        if p.strip()
-                    ]
-                douban_match = re.search(r"https?://(?:movie\.)?douban\.com/subject/\d+/?", output)
-                if douban_match:
-                    result["douban_url"] = douban_match.group(0)
-        except Exception:
-            pass
-        return result
+        return await get_ptgen_meta(meta, timeout=self.meta_timeout)
 
     async def _resolve_douban_link(self, meta):
         self.douban_url = ""

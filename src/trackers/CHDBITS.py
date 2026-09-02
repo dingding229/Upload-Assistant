@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 # Upload Assistant — CHDBITS Tracker Class
 from bs4 import BeautifulSoup
-import asyncio
 import re
 import os
-import shlex
 import httpx
 from src.trackers.COMMON import COMMON
 from src.exceptions import * # noqa E403
 from src.console import console
+from src.ptgen_api import get_ptgen_meta
 
 class CHDBITS():
 
@@ -93,22 +92,7 @@ class CHDBITS():
         return res_map.get(meta['resolution'], 1)
 
     async def get_external_meta(self, meta):
-        result = {"bbcode": "", "trans_title": []}
-        if not self.meta_script: return result
-        imdb_id = str(meta.get('imdb_id', '')).strip()
-        arg = f"tt{imdb_id.replace('tt', '').zfill(7)}" if imdb_id and imdb_id != '0' else meta.get("douban_url")
-        if not arg: return result
-        try:
-            cmdline = shlex.split(self.meta_script) + [str(arg).strip()]
-            proc = await asyncio.create_subprocess_exec(*cmdline, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=self.meta_timeout)
-            output = stdout.decode('utf-8').strip()
-            if output:
-                result["bbcode"] = output
-                m = re.search(r'^[ \t]*◎译　　名[ \t　]+(.+)$', output, flags=re.M)
-                if m: result["trans_title"] = [p.strip() for p in re.split(r'\s*/\s*', m.group(1).strip()) if p.strip()]
-        except Exception: pass
-        return result
+        return await get_ptgen_meta(meta, timeout=self.meta_timeout)
 
     async def edit_desc(self, meta):
         out_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
