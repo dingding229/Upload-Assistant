@@ -19,6 +19,23 @@ def _imdb_sid(value: Any) -> str:
     return f"tt{raw.zfill(7)}" if raw.isdigit() and int(raw) != 0 else ""
 
 
+def _get_imdb_sid(meta: dict[str, Any]) -> str:
+    """Resolve an IMDb id from the metadata formats used by the upload flow."""
+    candidates: list[Any] = [meta.get("imdb_id"), meta.get("imdb")]
+    imdb_info = meta.get("imdb_info")
+    if isinstance(imdb_info, dict):
+        candidates.extend(imdb_info.get(key) for key in ("imdb_id", "id", "imdb"))
+        imdb_url = str(imdb_info.get("imdb_url") or "")
+        url_match = re.search(r"/title/(tt\d+)", imdb_url, flags=re.IGNORECASE)
+        if url_match:
+            candidates.append(url_match.group(1))
+    for candidate in candidates:
+        sid = _imdb_sid(candidate)
+        if sid:
+            return sid
+    return ""
+
+
 def _trans_titles(payload: dict[str, Any], bbcode: str) -> list[str]:
     aka = payload.get("aka")
     if isinstance(aka, list):
@@ -33,7 +50,7 @@ def _trans_titles(payload: dict[str, Any], bbcode: str) -> list[str]:
 
 async def get_ptgen_meta(meta: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
     """Fetch and normalize PT-Gen metadata for a release."""
-    imdb_sid = _imdb_sid(meta.get("imdb_id"))
+    imdb_sid = _get_imdb_sid(meta)
     douban_url = str(meta.get("douban_url") or "").strip()
     if imdb_sid:
         params: dict[str, str] = {"source": "imdb", "sid": imdb_sid}
@@ -58,6 +75,13 @@ async def get_ptgen_meta(meta: dict[str, Any], timeout: float = 30.0) -> dict[st
         return {"bbcode": "", "trans_title": [], "douban_url": ""}
 
     bbcode = str(payload.get("format") or "").strip()
+    # Use the full-resolution TMDB poster in tracker descriptions.
+    bbcode = re.sub(
+        r"(https?://image\.tmdb\.org/t/p/)(?:w\d+|original)/",
+        r"\1original/",
+        bbcode,
+        flags=re.IGNORECASE,
+    )
     result = dict(payload)
     result["bbcode"] = bbcode
     result["trans_title"] = _trans_titles(payload, bbcode)

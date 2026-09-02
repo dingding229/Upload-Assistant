@@ -230,10 +230,12 @@ class HDSKY:
         announce_url = self.announce_url or "https://tracker.hdsky.me/announce.php"
         await common.create_torrent_for_upload(meta, self.tracker, self.source_flag, announce_url=announce_url)
         desc_file = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
-        if not os.path.exists(desc_file):
-            await self.edit_desc(meta)
+        # Always rebuild the description so the current PT-Gen metadata is included.
+        await self.edit_desc(meta)
 
-        ext_meta = meta.get('ptgen', await self.get_external_meta(meta))
+        ext_meta = meta.get('ptgen')
+        if not isinstance(ext_meta, dict):
+            ext_meta = await self.get_external_meta(meta)
         small_descr = ' / '.join(ext_meta.get("trans_title", [])) if ext_meta.get("trans_title") else meta.get('title', '')
         raw_id = str(meta.get('imdb_id', '0')).replace('tt', '').strip()
         imdb_url = f"http://www.imdb.com/title/tt{raw_id.zfill(7)}/" if (raw_id.isdigit() and int(raw_id) != 0) else ""
