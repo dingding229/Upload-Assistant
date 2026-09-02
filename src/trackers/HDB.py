@@ -301,10 +301,24 @@ class HDB:
         # If tv, submit tvdb_id/season/episode
         if meta.get('tvdb_id', 0) != 0:
             data['tvdb'] = meta['tvdb_id']
-        if meta.get('imdb_id') != 0:
-            data['imdb'] = str(meta.get('imdb_info', {}).get('imdb_url', '')) + '/'
-        else:
-            data['imdb'] = 0
+        # HDB expects a complete IMDb title URL.  When IMDb metadata lookup
+        # fails, ``imdb_id`` can still be available; avoid submitting just
+        # ``/`` (which HDB rejects) and construct the URL from the ID instead.
+        imdb_id = meta.get('imdb_id')
+        imdb_url = ''
+        imdb_info = meta.get('imdb_info')
+        if isinstance(imdb_info, dict):
+            candidate_url = str(imdb_info.get('imdb_url') or '').strip()
+            if re.match(r'^https?://(?:www\.)?imdb\.com/title/tt\d+/?$', candidate_url, re.IGNORECASE):
+                imdb_url = candidate_url.rstrip('/')
+        if not imdb_url and imdb_id not in (None, 0, '', '0'):
+            raw_imdb_id = str(imdb_id).strip()
+            if raw_imdb_id.lower().startswith('tt'):
+                raw_imdb_id = raw_imdb_id[2:]
+            if raw_imdb_id.isdigit():
+                imdb_url = f"https://www.imdb.com/title/tt{raw_imdb_id.zfill(7)}"
+        if imdb_url:
+            data['imdb'] = f'{imdb_url}/'
         if meta.get('category') == 'TV':
             data['tvdb_season'] = int(meta.get('season_int', 1))
             data['tvdb_episode'] = int(meta.get('episode_int', 1))
