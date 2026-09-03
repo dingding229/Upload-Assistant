@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """M-Team API uploader (kp.m-team.cc)."""
 import os
+import time
 import uuid
+import hashlib
+import hmac
+from urllib.parse import urlparse
 from typing import Any, Optional
 
 import aiofiles
@@ -13,6 +17,10 @@ from src.trackers.COMMON import COMMON
 
 
 class MTEAM:
+    # Values used by the official web client.  The API gateway validates these
+    # even though they are not represented in the generated OpenAPI schema.
+    _CLIENT_SECRET = "HLkPcWmycL57mfJt"
+    _CLIENT_VERSION = "1.1.7"
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.tracker = "MTEAM"
@@ -22,8 +30,8 @@ class MTEAM:
         self.api_key = str(c.get("api_key", c.get("authorization", ""))).strip()
         self.visitor_id = str(c.get("visitor_id", "")).strip() or str(uuid.uuid4())
         self.did = str(c.get("did", "")).strip()
-        self.version = str(c.get("version", "1.0")).strip()
-        self.web_version = str(c.get("web_version", "1.0.0")).strip()
+        self.version = str(c.get("version", self._CLIENT_VERSION)).strip()
+        self.web_version = str(c.get("web_version", "1170")).strip()
         self.announce_url = str(c.get("announce_url", "https://kp.m-team.cc/announce")).strip()
         self.source = str(c.get("source", 1)).strip()
         self.banned_groups: list[str] = []
@@ -66,7 +74,7 @@ class MTEAM:
             "team": val("team", 0), "processing": val("processing", 0),
         }
 
-    def _headers(self) -> dict[str, str]:
+    def _headers(self, timestamp_ms: int) -> dict[str, str]:
         headers = {"Accept": "application/json", "User-Agent": "Upload-Assistant/MTEAM"}
         if self.api_key:
             # Enter the exact value from the site's API configuration (including
@@ -75,6 +83,7 @@ class MTEAM:
         headers["visitorId"] = self.visitor_id
         headers["version"] = self.version
         headers["webVersion"] = self.web_version
+        headers["ts"] = str(timestamp_ms // 1000)
         if self.did:
             headers["did"] = self.did
         return headers
@@ -107,9 +116,14 @@ class MTEAM:
             meta["tracker_status"][self.tracker]["status_message"] = "Debug mode enabled, not uploading."
             return True
         path = "/torrent/createOredit"
+        timestamp_ms = int(time.time() * 1000)
+        sign_path = urlparse(self.base_url + path).path
+        sign_text = f"POST&{sign_path}&{timestamp_ms}"
+        data["_timestamp"] = str(timestamp_ms)
+        data["_sign"] = hmac.new(self._CLIENT_SECRET.encode(), sign_text.encode(), hashlib.sha1).hexdigest()
         try:
             async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-                r = await client.post(self.base_url + path, data=data, files=files, headers=self._headers())
+                r = await client.post(self.base_url + path, data=data, files=files, headers=self._headers(timestamp_ms))
             payload = r.json() if "json" in r.headers.get("content-type", "") else {}
             if r.status_code >= 400 or (isinstance(payload, dict) and payload.get("code") not in (None, 0, 200)):
                 raise UploadException(f"M-Team upload failed: {payload.get('message', r.text[:300])}", "red")
