@@ -749,12 +749,20 @@ class COMMON:
         cookies: dict[str, str] = {}
         async with aiofiles.open(cookiefile) as fp:
             content = await fp.read()
-            for line in content.splitlines():
-                if line.strip() and not line.startswith(("# ", "#")):
-                    lineFields = re.split(' |\t', line.strip())
-                    lineFields = [x for x in lineFields if x != ""]
-                    if len(lineFields) >= 7:
-                        cookies[lineFields[5]] = lineFields[6]
+            for raw_line in content.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                # Netscape exports prefix HttpOnly cookie domains with
+                # ``#HttpOnly_``. Keep those auth cookies while ignoring
+                # ordinary comments and header lines.
+                if line.startswith('#HttpOnly_'):
+                    line = line[len('#HttpOnly_'):]
+                elif line.startswith('#'):
+                    continue
+                lineFields = re.split(r'\s+', line)
+                if len(lineFields) >= 7:
+                    cookies[lineFields[5]] = lineFields[6]
         return cookies
 
     async def ptgen(self, meta: dict[str, Any], ptgen_site: str = "", ptgen_retry: int = 3) -> str:

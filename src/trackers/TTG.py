@@ -195,7 +195,22 @@ class TTG:
             common = COMMON(config=self.config)
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.txt")
             cookies = await common.parseCookieFile(cookiefile)
-            async with httpx.AsyncClient(cookies=cookies, follow_redirects=True, timeout=60.0) as client:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; Upload-Assistant)',
+                'Referer': 'https://totheglory.im/upload.php',
+            }
+            async with httpx.AsyncClient(
+                cookies=cookies,
+                headers=headers,
+                follow_redirects=True,
+                timeout=60.0,
+            ) as client:
+                session_check = await client.get('https://totheglory.im/upload.php')
+                if 'login.php' in str(session_check.url):
+                    raise UploadException(
+                        'TTG Cookie is invalid or expired; please refresh data/cookies/TTG.txt',
+                        'red',
+                    )
                 up = await client.post(url=url, data=data, files=files)
 
             if str(up.url).startswith("https://totheglory.im/details.php?id="):
@@ -236,7 +251,16 @@ class TTG:
         search_url = f"https://totheglory.im/browse.php?search_field= {imdb} {res_type}"
 
         try:
-            async with httpx.AsyncClient(cookies=cookies, timeout=10.0) as client:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; Upload-Assistant)',
+                'Referer': 'https://totheglory.im/browse.php',
+            }
+            async with httpx.AsyncClient(
+                cookies=cookies,
+                headers=headers,
+                follow_redirects=True,
+                timeout=10.0,
+            ) as client:
                 response = await client.get(search_url)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
