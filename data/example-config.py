@@ -936,12 +936,10 @@ config = {
         "TTG": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
             "link_dir_name": "",
-            "username": "",
-            "password": "",
-            "login_question": "",
-            "login_answer": "",
-            "user_id": "",
+            # For TTG, export cookies from https://totheglory.im/ using a Netscape-format cookies exporter.
+            # cookies need to be in netscape format and need to be in data/cookies/TTG.txt
             "announce_url": "https://totheglory.im/announce/",
+            "meta_timeout": 30,
             "anon": False,
         },
         "TTR": {

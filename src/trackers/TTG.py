@@ -6,14 +6,13 @@ from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import aiofiles
-import cli_ui
 import httpx
 from bs4 import BeautifulSoup
 from unidecode import unidecode
 
 from src.console import console
-from src.cookie_auth import CookieValidator
 from src.exceptions import *  # noqa #F405
+from src.ptgen_api import get_ptgen_meta
 from src.trackers.COMMON import COMMON
 
 Meta = dict[str, Any]
@@ -26,16 +25,10 @@ class TTG:
         self.config: Config = config
         self.tracker = 'TTG'
         self.source_flag = 'TTG'
-        self.username = str(config['TRACKERS']['TTG'].get('username', '')).strip()
-        self.password = str(config['TRACKERS']['TTG'].get('password', '')).strip()
-        self.passid = str(config['TRACKERS']['TTG'].get('login_question', '0')).strip()
-        self.passan = str(config['TRACKERS']['TTG'].get('login_answer', '')).strip()
-        self.uid = str(config['TRACKERS']['TTG'].get('user_id', '')).strip()
         self.passkey = str(config['TRACKERS']['TTG'].get('announce_url', '')).strip().split('/')[-1]
+        self.meta_timeout = int(config['TRACKERS']['TTG'].get('meta_timeout', 30))
         self.signature = None
         self.banned_groups = [""]
-
-        self.cookie_validator = CookieValidator(config)
 
     async def edit_name(self, meta: Meta) -> str:
         ttg_name = str(meta.get('name', ''))
@@ -52,7 +45,7 @@ class TTG:
         lang = str(meta.get('original_language', 'UNKNOWN')).upper()
         category = str(meta.get('category', ''))
         resolution = str(meta.get('resolution', ''))
-        if meta['category'] == "MOVIE":
+        if category == "MOVIE":
             # 51 = DVDRip
             if resolution.startswith("720"):
                 type_id = 52  # 720p
@@ -73,7 +66,7 @@ class TTG:
                     if lang in ('ZH', 'CN', 'CMN'):
                         type_id = 75  # Chinese
                 if lang in ('KR', 'KO'):
-                    type_id = 75  # Korean
+                    type_id = 74  # Korean
                 if lang in ('JA', 'JP'):
                     type_id = 73  # Japanese
             else:
@@ -94,7 +87,7 @@ class TTG:
             if resolution.startswith("1080"):
                 type_id = 63  # 1080
             if meta.get('is_disc', '') == 'BDMV':
-                type_id = 64  # BDMV
+                type_id = 67  # BDMV
 
         if (
             "animation" in genres_value
@@ -102,7 +95,7 @@ class TTG:
         ) and meta.get('sd', 1) == 0:
             type_id = 58
 
-        if resolution in ("2160p"):
+        if resolution == "2160p":
             type_id = 108
             if meta.get('is_disc', '') == 'BDMV':
                 type_id = 109
@@ -160,6 +153,15 @@ class TTG:
             'file': (f"{torrentFileName}.torrent", torrent_bytes, "application/x-bittorent"),
             'nfo': ("torrent.nfo", mi_text)
         }
+        imdb_value = str(meta.get('imdb_id', '') or '').strip()
+        imdb_digits = re.sub(r'^tt', '', imdb_value, flags=re.IGNORECASE)
+        douban_id = str(meta.get('douban_id', '') or '').strip()
+        if not douban_id:
+            douban_url = str(meta.get('douban_url', '') or '').strip()
+            douban_match = re.search(r'/subject/(\d+)', douban_url)
+            if douban_match:
+                douban_id = douban_match.group(1)
+
         data: dict[str, Any] = {
             'MAX_FILE_SIZE': '4000000',
             'team': '',
@@ -167,14 +169,18 @@ class TTG:
             'name': ttg_name,
             'type': await self.get_type_id(meta),
             'descr': ttg_desc.rstrip(),
+            'subtitle': str(meta.get('subtitle', '') or '').strip(),
+            'highlight': str(meta.get('highlight', '') or '').strip(),
 
             'anonymity': anon,
             'nodistr': 'no',
 
         }
         url = "https://totheglory.im/takeupload.php"
-        if int(meta.get('imdb_id', 0) or 0) != 0:
-            data['imdb_c'] = f"tt{meta.get('imdb')}"
+        if imdb_digits.isdigit() and int(imdb_digits) != 0:
+            data['imdb_c'] = f"tt{imdb_digits}"
+        if douban_id:
+            data['douban_id'] = douban_id
 
         # Submit
         if meta.get('debug'):
@@ -186,9 +192,9 @@ class TTG:
             await common.create_torrent_for_upload(meta, f"{self.tracker}" + "_DEBUG", f"{self.tracker}" + "_DEBUG", announce_url="https://fake.tracker")
             return True  # Debug mode - simulated success
         else:
-            cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.json")
-            raw_cookies = self.cookie_validator._load_cookies_dict_secure(cookiefile)  # type: ignore[reportPrivateUsage]
-            cookies = {name: str(data.get('value', '')) for name, data in raw_cookies.items()}
+            common = COMMON(config=self.config)
+            cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.txt")
+            cookies = await common.parseCookieFile(cookiefile)
             async with httpx.AsyncClient(cookies=cookies, follow_redirects=True, timeout=60.0) as client:
                 up = await client.post(url=url, data=data, files=files)
 
@@ -212,11 +218,12 @@ class TTG:
 
     async def search_existing(self, meta: Meta, _disctype: str) -> list[str]:
         dupes: list[str] = []
-        cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.json")
+        cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.txt")
         if not os.path.exists(cookiefile):
-            console.print("[bold red]Cookie file not found: TTG.json")
+            console.print("[bold red]Cookie file not found: TTG.txt")
             return []
-        cookies = self.cookie_validator._load_cookies_dict_secure(cookiefile)  # type: ignore[reportPrivateUsage]
+        common = COMMON(config=self.config)
+        cookies = await common.parseCookieFile(cookiefile)
 
         imdb = f"imdb{meta.get('imdb')}" if int(meta.get('imdb_id', 0) or 0) != 0 else ""
         if meta.get('is_disc', '') == "BDMV":
@@ -256,71 +263,26 @@ class TTG:
         return dupes
 
     async def validate_credentials(self, meta: Meta) -> bool:
-        cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.pkl")
-        if not os.path.exists(cookiefile):
-            await self.login(cookiefile)
-        vcookie = await self.validate_cookies(meta, cookiefile)
-        if vcookie is not True:
-            console.print('[red]Failed to validate cookies. Please confirm that the site is up and your passkey is valid.')
-            recreate = cli_ui.ask_yes_no("Log in again and create new session?")
-            if recreate is True:
-                if os.path.exists(cookiefile):
-                    os.remove(cookiefile)
-                await self.login(cookiefile)
-                vcookie = await self.validate_cookies(meta, cookiefile)
-                return vcookie
-            else:
-                return False
-        return True
+        return await self.validate_cookies(meta)
 
-    async def validate_cookies(self, meta: Meta, cookiefile: str) -> bool:
+    async def validate_cookies(self, meta: Meta) -> bool:
         url = "https://totheglory.im"
-        if os.path.exists(cookiefile):
-            raw_cookies = self.cookie_validator._load_cookies_dict_secure(cookiefile)  # type: ignore[reportPrivateUsage]
-            cookies = {name: str(data.get('value', '')) for name, data in raw_cookies.items()}
-            async with httpx.AsyncClient(cookies=cookies, timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(url=url)
-                if meta.get('debug'):
-                    console.print('[cyan]Cookies:')
-                    console.print(resp.url)
-                return resp.text.find('''<a href="/logout.php">Logout</a>''') != -1
-        else:
+        cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.txt")
+        if not os.path.exists(cookiefile):
+            console.print(
+                "[bold red]Cookie file not found: TTG.txt\n"
+                "Export TTG cookies in Netscape format to data/cookies/TTG.txt"
+            )
             return False
 
-    async def login(self, cookiefile: str) -> None:
-        url = "https://totheglory.im/takelogin.php"
-        data: dict[str, Any] = {
-            'username': self.username,
-            'password': self.password,
-            'passid': self.passid,
-            'passan': self.passan
-        }
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.post(url, data=data)
-            await asyncio.sleep(0.5)
-            if str(response.url).endswith('2fa.php'):
-                soup = BeautifulSoup(response.text, 'html.parser')
-                token_input = soup.find('input', {'name': 'authenticity_token'})
-                auth_token = token_input.get('value') if token_input else None
-                if not auth_token:
-                    raise UploadException('Missing authenticity token during TTG login', 'red')  # noqa #F405
-                two_factor_data = {
-                    'otp': console.input('[yellow]TTG 2FA Code: '),
-                    'authenticity_token': auth_token,
-                    'uid': self.uid
-                }
-                two_factor_url = "https://totheglory.im/take2fa.php"
-                response = await client.post(two_factor_url, data=two_factor_data)
-                await asyncio.sleep(0.5)
-            if str(response.url).endswith('my.php'):
-                console.print('[green]Successfully logged into TTG')
-                self.cookie_validator._save_cookies_secure(client.cookies.jar, cookiefile)  # type: ignore[reportPrivateUsage]
-            else:
-                console.print('[bold red]Something went wrong')
-                await asyncio.sleep(1)
-                console.print(response.text)
-                console.print(response.url)
-        return
+        common = COMMON(config=self.config)
+        cookies = await common.parseCookieFile(cookiefile)
+        async with httpx.AsyncClient(cookies=cookies, timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(url=url)
+            if meta.get('debug'):
+                console.print('[cyan]Cookies:')
+                console.print(resp.url)
+            return resp.text.find('''<a href="/logout.php">Logout</a>''') != -1
 
     async def edit_desc(self, meta: Meta) -> None:
         async with aiofiles.open(
@@ -330,13 +292,12 @@ class TTG:
             base = await base_file.read()
 
         from src.bbcode import BBCODE
-        from src.trackers.COMMON import COMMON
-        common = COMMON(config=self.config)
-
         parts: list[str] = []
-        if int(meta.get('imdb_id', 0) or 0) != 0:
-            ptgen = await common.ptgen(meta)
-            if ptgen.strip() != '':
+        if meta.get('imdb_id') or meta.get('imdb') or meta.get('imdb_info') or meta.get('douban_url'):
+            ext_meta = await get_ptgen_meta(meta, timeout=self.meta_timeout)
+            meta['ptgen'] = ext_meta
+            ptgen = str(ext_meta.get('bbcode', '') or '').strip()
+            if ptgen:
                 parts.append(ptgen)
 
         # Add This line for all web-dls
