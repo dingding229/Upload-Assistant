@@ -73,6 +73,10 @@ class MTEAM:
         common = COMMON(self.config)
         await common.create_torrent_for_upload(meta, self.tracker, self.source_flag)
         desc_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
+        if not os.path.isfile(desc_path):
+            # M-Team does not need a tracker-specific description transform;
+            # use the common prepared description when one is not present.
+            desc_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt"
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}].torrent"
         async with aiofiles.open(desc_path, encoding="utf-8") as f: descr = await f.read()
         async with aiofiles.open(torrent_path, "rb") as f: torrent = await f.read()
