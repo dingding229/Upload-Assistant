@@ -115,15 +115,9 @@ class MTEAM:
         desc_parts: list[str] = []
         if ext_meta.get("bbcode"):
             desc_parts.append(str(ext_meta["bbcode"]).strip())
-        for disc in meta.get("discs", []) or []:
-            if isinstance(disc, dict) and disc.get("summary"):
-                desc_parts.append(f"[quote]{str(disc['summary']).strip()}[/quote]")
-        if not meta.get("discs"):
-            mi_path = os.path.join(meta["base_dir"], "tmp", meta["uuid"], "MEDIAINFO_CLEANPATH.txt")
-            if os.path.isfile(mi_path):
-                async with aiofiles.open(mi_path, encoding="utf-8", errors="replace") as f:
-                    desc_parts.append(f"[quote]{await f.read()}[/quote]")
-        images = meta.get("PTP_images_key", meta.get("image_list", []))
+        # M-Team receives MediaInfo/BDInfo through the dedicated API field;
+        # it must not be duplicated in the public description.
+        images = meta.get("image_list", [])
         if isinstance(images, list):
             for image in images:
                 if isinstance(image, dict) and image.get("raw_url"):
