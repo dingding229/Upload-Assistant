@@ -10,6 +10,7 @@ from cogs.redaction import Redaction
 from src.console import console
 from src.get_desc import DescriptionBuilder
 from src.exceptions import UploadException
+from src.ptgen_api import get_ptgen_meta
 from src.trackers.COMMON import COMMON
 
 Meta = dict[str, Any]
@@ -107,72 +108,27 @@ class MTEAM:
         return "\n".join(desc)
 
     async def generate_description(self, meta: Meta) -> str:
-        builder = DescriptionBuilder(self.tracker, self.config)
+        ext_meta = meta.get("ptgen")
+        if not isinstance(ext_meta, dict):
+            ext_meta = await get_ptgen_meta(meta)
+            meta["ptgen"] = ext_meta
         desc_parts: list[str] = []
-
-        # Custom Header
-        custom_header = await builder.get_custom_header()
-        desc_parts.append(custom_header)
-
-        # M-Team Standard Description
-        desc_parts.append(self.mteam_standard_desc(meta))
-
-        # User description
-        user_description = await builder.get_user_description(meta)
-        desc_parts.append(user_description)
-
-        # Disc menus screenshots header
-        menu_images_value = meta.get("menu_images", [])
-        menu_images: list[dict[str, Any]] = []
-        if isinstance(menu_images_value, list):
-            menu_images_list = cast(list[Any], menu_images_value)
-            menu_images.extend([cast(dict[str, Any], item) for item in menu_images_list if isinstance(item, dict)])
-        if menu_images:
-            desc_parts.append(await builder.menu_screenshot_header(meta))
-
-            # Disc menus screenshots
-            menu_screenshots_block = ""
-            for image in menu_images:
-                menu_raw_url = image.get("raw_url")
-                if menu_raw_url:
-                    menu_screenshots_block += f"![]({menu_raw_url})"
-            if menu_screenshots_block:
-                desc_parts.append(menu_screenshots_block)
-
-        # Tonemapped Header
-        desc_parts.append(await builder.get_tonemapped_header(meta))
-
-        # Screenshot Header
-        images_value = meta.get("image_list", [])
-        images: list[dict[str, Any]] = []
-        if isinstance(images_value, list):
-            images_list = cast(list[Any], images_value)
-            images.extend([cast(dict[str, Any], item) for item in images_list if isinstance(item, dict)])
-        if images:
-            desc_parts.append(await builder.screenshot_header())
-
-            # Screenshots
-            if images:
-                screenshots_block = ""
-                for image in images:
-                    raw_url = image.get("raw_url")
-                    if raw_url:
-                        screenshots_block += f"![]({raw_url})"
-                if screenshots_block:
-                    desc_parts.append(screenshots_block)
-
-        # Signature
-        desc_parts.append(f"[{meta['ua_signature']}](https://github.com/Audionut/Upload-Assistant)")
-
-        description = "\n\n".join(part for part in desc_parts if part.strip())
-
-        from src.bbcode import BBCODE
-
-        bbcode = BBCODE()
-        description = description.strip()
-        description = description.replace("[*] ", "• ").replace("[*]", "• ")
-        description = self.bbcode_to_markdown(description)
-        description = bbcode.remove_extra_lines(description)
+        if ext_meta.get("bbcode"):
+            desc_parts.append(str(ext_meta["bbcode"]).strip())
+        for disc in meta.get("discs", []) or []:
+            if isinstance(disc, dict) and disc.get("summary"):
+                desc_parts.append(f"[quote]{str(disc['summary']).strip()}[/quote]")
+        if not meta.get("discs"):
+            mi_path = os.path.join(meta["base_dir"], "tmp", meta["uuid"], "MEDIAINFO_CLEANPATH.txt")
+            if os.path.isfile(mi_path):
+                async with aiofiles.open(mi_path, encoding="utf-8", errors="replace") as f:
+                    desc_parts.append(f"[quote]{await f.read()}[/quote]")
+        images = meta.get("PTP_images_key", meta.get("image_list", []))
+        if isinstance(images, list):
+            for image in images:
+                if isinstance(image, dict) and image.get("raw_url"):
+                    desc_parts.append(f"[img]{image['raw_url']}[/img]")
+        description = "\n\n".join(part for part in desc_parts if part.strip()).strip()
 
         async with aiofiles.open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", "w", encoding="utf-8") as description_file:
             await description_file.write(description)
@@ -375,6 +331,7 @@ class MTEAM:
             return eac3
         elif "dd " in codec:
             return ac3
+
         elif "dts-hd" in codec:
             return dts_hd_ma
         elif "dts" in codec:
@@ -387,15 +344,28 @@ class MTEAM:
             console.print(f"{self.tracker}: Unknown or unsupported audio codec '{codec}', defaulting to AC3.")
             return ac3
 
+    def _imdb_url(self, meta: Meta) -> str:
+        info = meta.get("imdb_info") if isinstance(meta.get("imdb_info"), dict) else {}
+        candidate = str(info.get("imdb_url") or "").strip()
+        if candidate:
+            return candidate
+        raw = str(meta.get("imdb_id") or info.get("imdbID") or info.get("imdb_id") or "").strip()
+        if raw.lower().startswith("tt"):
+            raw = raw[2:]
+        return f"https://www.imdb.com/title/tt{raw.zfill(7)}/" if raw.isdigit() and int(raw) else ""
+
     async def fetch_data(self, meta: Meta) -> dict[str, Any]:
         """
         https://test2.m-team.cc/api/swagger-ui/index.html#/種子/createOredit
         """
+        if not isinstance(meta.get("ptgen"), dict):
+            meta["ptgen"] = await get_ptgen_meta(meta)
+        ptgen = cast(dict[str, Any], meta.get("ptgen", {}))
         data = {
             # "torrent": 0,
             # "offer": 0,
             "name": meta["name"],
-            "smallDescr": self.get_small_description(meta),
+            "smallDescr": " / ".join(str(x) for x in ptgen.get("trans_title", []) if str(x).strip()) or str(meta.get("title", "")),
             "descr": await self.generate_description(meta),
             "category": self.get_category_id(meta),
             # "source": 0,
@@ -406,12 +376,12 @@ class MTEAM:
             # "team": 0,
             # "processing": 0,
             # "countries": "",
-            "imdb": meta.get("imdb_info", {}).get("imdbID", ""),
-            # "douban": "",
+            "imdb": self._imdb_url(meta),
+            "douban": str(ptgen.get("douban_url") or meta.get("douban_url") or ""),
             # "dmmCode": "",
             # "cids": "",
             # "aids": "",
-            "anonymous": bool(meta.get("anonymous", False)),
+            "anonymous": bool(meta.get("anon", 0) or self.config["TRACKERS"][self.tracker].get("anon", False)),
             # "labels": 0,
             # "tags": "",
             # "file": "",
