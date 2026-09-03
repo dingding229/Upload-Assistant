@@ -717,12 +717,8 @@ config = {
         },
         "MTEAM": {
             "link_dir_name": "",
-            "api_base": "https://kp.m-team.cc/api",
             "api_key": "",
-            "announce_url": "https://kp.m-team.cc/announce",
-            "source": 1,
             "anon": False,
-            "ids": {},
         },
         "NBL": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name

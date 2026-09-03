@@ -1367,9 +1367,9 @@ api_trackers = {
 }
 
 other_api_trackers = {
-    'ANT', 'BHDTV', 'DC', 'GPW', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
+    'ANT', 'BHDTV', 'DC', 'GPW', 'MTEAM', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
 }
 
 http_trackers = {
-    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDT', 'IS', 'MTV', 'MTEAM', 'PHD', 'PTER', 'CHDBITS', 'HDSKY', 'OURBITS', 'SSD', 'TTG'
+    'AR', 'ASC', 'AZ', 'BJS', 'BT', 'CZ', 'FF', 'FL', 'HDB', 'HDS', 'HDT', 'IS', 'MTV', 'PHD', 'PTER', 'CHDBITS', 'HDSKY', 'OURBITS', 'SSD', 'TTG'
 }
