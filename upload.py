@@ -1764,7 +1764,7 @@ async def do_the_thing(base_dir: str) -> None:
                     if 'torrent_id' in status_dict:
                         tracker_class = tracker_class_map[tracker](config=config)
                         torrent_url = tracker_class.torrent_url
-                        return f"{tracker}: {torrent_url}{status_dict['torrent_id']}\n"
+                        return f"{torrent_url}{status_dict['torrent_id']}\n"
 
                     if status_message is not None and "data error" not in str(status_message) and tracker != "MTV":
                         return f"{tracker}: {Redaction.redact_private_info(status_message)}\n"

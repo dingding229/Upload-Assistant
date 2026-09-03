@@ -3,7 +3,7 @@ import asyncio
 import os
 import re
 from typing import Any, Optional, cast
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import aiofiles
 import httpx
@@ -25,6 +25,7 @@ class TTG:
         self.config: Config = config
         self.tracker = 'TTG'
         self.source_flag = 'TTG'
+        self.torrent_url = 'https://totheglory.im/details.php?id='
         self.passkey = str(config['TRACKERS']['TTG'].get('announce_url', '')).strip().split('/')[-1]
         self.meta_timeout = int(config['TRACKERS']['TTG'].get('meta_timeout', 30))
         self.signature = None
@@ -224,7 +225,8 @@ class TTG:
                         'red',
                     )
                 torrent_id = id_match.group(2)
-                await self.download_new_torrent(torrent_id, torrent_path)
+                tracker_status[self.tracker]['torrent_id'] = torrent_id
+                await self.download_new_torrent(torrent_id, torrent_path, client=client)
                 return True
             else:
                 console.print(data)
@@ -380,13 +382,65 @@ class TTG:
         ) as descfile:
             await descfile.write("".join(parts))
 
-    async def download_new_torrent(self, id: str, torrent_path: str) -> None:
-        download_url = f"https://totheglory.im/dl/{id}/{self.passkey}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.get(url=download_url)
-        if r.status_code == 200:
-            async with aiofiles.open(torrent_path, "wb") as tor:
-                await tor.write(r.content)
-        else:
-            console.print("[red]There was an issue downloading the new .torrent from TTG")
-            console.print(r.text)
+    async def download_new_torrent(
+        self,
+        id: str,
+        torrent_path: str,
+        client: Optional[httpx.AsyncClient] = None,
+    ) -> None:
+        """Download the uploaded torrent using the link exposed on its details page.
+
+        TTG assigns a per-user download token in the details page (for example
+        ``/dl/<id>/<token>``); the announce URL is not a valid download token.
+        Reuse the authenticated upload client so the same Cookie session is used.
+        """
+        owns_client = client is None
+        if owns_client:
+            client = httpx.AsyncClient(
+                timeout=30.0,
+                follow_redirects=True,
+                headers={'User-Agent': 'Mozilla/5.0 (compatible; Upload-Assistant)'},
+            )
+
+        assert client is not None
+        try:
+            details_url = f"{self.torrent_url}{id}"
+            details = await client.get(url=details_url)
+            if 'login.php' in str(details.url):
+                raise UploadException(
+                    'TTG session expired while downloading the uploaded torrent',
+                    'red',
+                )
+
+            soup = BeautifulSoup(details.text, 'html.parser')
+            download_url: Optional[str] = None
+            for anchor in soup.find_all('a', href=True):
+                href = anchor.get('href')
+                if not isinstance(href, str):
+                    continue
+                absolute = urljoin('https://totheglory.im/', href)
+                if re.search(rf'/dl/{re.escape(str(id))}/', absolute):
+                    download_url = absolute
+                    break
+                if re.search(rf'(?:download|dl).*id[=/]{re.escape(str(id))}', absolute, re.IGNORECASE):
+                    download_url = absolute
+                    break
+
+            if not download_url:
+                raise UploadException(
+                    f'TTG details page did not expose a download link for torrent {id}',
+                    'red',
+                )
+
+            response = await client.get(url=download_url)
+            content_type = response.headers.get('content-type', '').lower()
+            if response.status_code != 200 or 'text/html' in content_type:
+                raise UploadException(
+                    f'TTG torrent download failed: {response.status_code} {download_url}',
+                    'red',
+                )
+            async with aiofiles.open(torrent_path, 'wb') as tor:
+                await tor.write(response.content)
+        finally:
+            if owns_client:
+                await client.aclose()
