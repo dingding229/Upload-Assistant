@@ -358,6 +358,10 @@ config = {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
             "link_dir_name": "",
             "api_key": "",
+            "visitor_id": "",
+            "did": "",
+            "version": "1.0",
+            "web_version": "1.0.0",
             "anon": False,
             # Send uploads to Aura4K modq for staff approval
             "modq": False,

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """M-Team API uploader (kp.m-team.cc)."""
 import os
+import uuid
 from typing import Any, Optional
 
 import aiofiles
@@ -19,6 +20,10 @@ class MTEAM:
         c = config.get("TRACKERS", {}).get("MTEAM", {})
         self.base_url = str(c.get("api_base", "https://kp.m-team.cc/api")).rstrip("/")
         self.api_key = str(c.get("api_key", c.get("authorization", ""))).strip()
+        self.visitor_id = str(c.get("visitor_id", "")).strip() or str(uuid.uuid4())
+        self.did = str(c.get("did", "")).strip()
+        self.version = str(c.get("version", "1.0")).strip()
+        self.web_version = str(c.get("web_version", "1.0.0")).strip()
         self.announce_url = str(c.get("announce_url", "https://kp.m-team.cc/announce")).strip()
         self.source = str(c.get("source", 1)).strip()
         self.banned_groups: list[str] = []
@@ -67,6 +72,11 @@ class MTEAM:
             # Enter the exact value from the site's API configuration (including
             # ``Bearer `` when the site supplies that prefix).
             headers["authorization"] = self.api_key
+        headers["visitorId"] = self.visitor_id
+        headers["version"] = self.version
+        headers["webVersion"] = self.web_version
+        if self.did:
+            headers["did"] = self.did
         return headers
 
     async def upload(self, meta: dict[str, Any], _disctype: str) -> Optional[bool]:
