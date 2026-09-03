@@ -2,7 +2,6 @@
 # Upload Assistant © 2025 Audionut & wastaken7 — Licensed under UAPL v1.0
 import asyncio
 import contextlib
-import filecmp
 import gc
 import json
 import os
@@ -11,7 +10,6 @@ import re
 import shutil
 import signal
 import sys
-import threading
 import time
 import traceback
 from collections.abc import Iterable, Mapping
@@ -57,132 +55,34 @@ from src.uploadscreens import UploadScreensManager
 cli_ui.setup(color='always', title="Upload Assistant")
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
-# Global state for shutdown handling (reset via _reset_shutdown_state() for in-process runs)
+# Global state for shutdown handling.
 _shutdown_requested = False
-_is_webui_mode = False
-_webui_server = None  # Reference to waitress server for graceful shutdown
-_shutdown_event = threading.Event()  # Event for coordinating graceful shutdown
 
 
 def _reset_shutdown_state() -> None:
-    """Reset global shutdown state for clean in-process runs from web UI."""
-    global _shutdown_requested, _is_webui_mode, _webui_server
+    """Reset global shutdown state for a fresh CLI run."""
+    global _shutdown_requested
     _shutdown_requested = False
-    _is_webui_mode = False
-    _webui_server = None
-    _shutdown_event.clear()
 
 
 def _handle_shutdown_signal(signum: int, _frame: Any) -> None:
     """Handle SIGTERM/SIGINT for graceful shutdown."""
-    global _shutdown_requested, _webui_server
+    global _shutdown_requested
     signal_name = 'SIGTERM' if signum == signal.SIGTERM else 'SIGINT'
 
     if not _shutdown_requested:
         _shutdown_requested = True
         console.print(f"\n[yellow]Received {signal_name}, shutting down gracefully...[/yellow]")
 
-        # Signal shutdown event (for webui thread coordination)
-        _shutdown_event.set()
-
-        # If running webui, close the server (main thread handles exit via event)
-        if _webui_server is not None:
-            with contextlib.suppress(Exception):
-                _webui_server.close()
-        else:
-            # Non-webui mode: raise to let asyncio handle task cancellation
-            raise KeyboardInterrupt
+        raise KeyboardInterrupt
     else:
         # Second signal = force exit
         console.print("[red]Forced exit[/red]")
         sys.exit(1)
 
 
-# ── Restore built-in data/ files when a Docker volume mount hides them ──
-# The Dockerfile copies the original data/ tree to defaults/data/ so that
-# volume mounts over /Upload-Assistant/data/ don't lose critical files
-# (__init__.py, version.py, example-config.py, templates/).
 _data_dir = os.path.join(base_dir, "data")
-_defaults_data_dir = os.path.join(base_dir, "defaults", "data")
-
-# Directories that should never be copied into user-facing data/
-_SKIP_DIRS = {"__pycache__", ".mypy_cache", ".ruff_cache"}
-
-# Built-in metadata files that should track the image version even when
-# /Upload-Assistant/data is a persistent volume from an older container.
-_ALWAYS_SYNC_ROOT_FILES = {"version.py"}
-
-if os.path.isdir(_defaults_data_dir):
-    os.makedirs(_data_dir, exist_ok=True)
-    _restored_count = 0
-    _synced_count = 0
-    _restore_errors: list[str] = []
-    # Walk the defaults tree and copy anything missing in the live data dir.
-    # Never overwrite user files (config.py, cookies/, tags.json, etc.).
-    # Root version.py is image metadata, not user config, so keep it current.
-    for dirpath, dirnames, filenames in os.walk(_defaults_data_dir):
-        # Prune unwanted directories in-place so os.walk skips them entirely
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
-
-        rel_dir = os.path.relpath(dirpath, _defaults_data_dir)
-        target_dir = os.path.join(_data_dir, rel_dir) if rel_dir != "." else _data_dir
-        try:
-            os.makedirs(target_dir, exist_ok=True)
-        except OSError as exc:
-            _restore_errors.append(f"mkdir {rel_dir}: {exc}")
-            continue  # skip this subtree if we can't create the directory
-        for fname in filenames:
-            # Skip bytecode and cache files
-            if fname.endswith((".pyc", ".pyo")):
-                continue
-            target_file = os.path.join(target_dir, fname)
-            src_file = os.path.join(dirpath, fname)
-            should_sync = False
-            if rel_dir == "." and fname in _ALWAYS_SYNC_ROOT_FILES and os.path.exists(target_file):
-                try:
-                    should_sync = not filecmp.cmp(src_file, target_file, shallow=False)
-                except OSError:
-                    should_sync = True
-            if not os.path.exists(target_file) or should_sync:
-                try:
-                    shutil.copy2(src_file, target_file)
-                    if should_sync:
-                        _synced_count += 1
-                    else:
-                        _restored_count += 1
-                except OSError as exc:
-                    _restore_errors.append(f"{os.path.join(rel_dir, fname)}: {exc}")
-    if _restored_count:
-        console.print(f"Restored {_restored_count} built-in file(s) into data/ from defaults.", markup=False)
-    if _synced_count:
-        console.print(f"Synced {_synced_count} built-in metadata file(s) into data/ from defaults.", markup=False)
-    if _restore_errors:
-        console.print(f"[red]Warning: failed to restore {len(_restore_errors)} file(s) into data/:[/red]")
-        for _err in _restore_errors[:5]:
-            console.print(f"[red]  {_err}[/red]")
-        if len(_restore_errors) > 5:
-            console.print(f"[red]  ... and {len(_restore_errors) - 5} more[/red]")
-        console.print("[yellow]Hint: ensure the mounted data/ directory is writable by the container user.[/yellow]")
-        console.print("[yellow]  e.g. on the host: chown -R 1000:1000 /path/to/data[/yellow]")
-
 _config_path = os.path.join(_data_dir, "config.py")
-
-# Detect -webui or --webui forms, including --webui=host:port
-_is_webui_arg = any(
-    (arg == "-webui" or arg == "--webui" or arg.startswith("-webui=") or arg.startswith("--webui="))
-    for arg in sys.argv
-)
-# Auto-create config.py from example on first WebUI start
-if _is_webui_arg and not os.path.exists(_config_path):
-    _example_config_path = os.path.join(_data_dir, "example-config.py")
-    if os.path.exists(_example_config_path):
-        console.print("No config.py found. Creating default config from example-config.py...", markup=False)
-        try:
-            shutil.copy2(_example_config_path, _config_path)
-            console.print("Default config created successfully!", markup=False)
-        except Exception as e:
-            console.print(f"Failed to create default config: {e}", markup=False)
-            console.print("Continuing without config file...", markup=False)
 
 Meta: TypeAlias = dict[str, Any]
 
@@ -1301,12 +1201,8 @@ async def update_notification(base_dir: str) -> Optional[str]:
 
 
 async def do_the_thing(base_dir: str) -> None:
-    # Reload config from disk so that changes made via the WebUI config
-    # editor (or manual file edits between runs) are picked up.  The
-    # module-level ``config`` dict is imported once at startup and would
-    # otherwise remain stale for the lifetime of the process.  Updating
-    # in-place (clear + update) keeps all existing references (Args,
-    # Clients, managers, etc.) pointing at the same dict object.
+    # Reload config from disk so manual edits between runs are picked up.
+    # Updating in-place keeps all existing manager references valid.
     try:
         import importlib
 
@@ -1375,77 +1271,6 @@ async def do_the_thing(base_dir: str) -> None:
             meta['path'] = None  # Clear the dummy path after parsing
         else:
             meta, _help, _before_args = cast(tuple[Meta, Any, Any], parser.parse(list(' '.join(sys.argv[1:]).split(' ')), meta))
-
-        # Start web UI if requested (exclusive mode - doesn't continue with uploads)
-        if meta.get('webui'):
-            global _is_webui_mode, _webui_server
-            _is_webui_mode = True
-
-            webui_addr = meta['webui']
-            if ':' not in webui_addr:
-                console.print("[red]Invalid web UI address format. Use HOST:PORT[/red]")
-                sys.exit(1)
-
-            try:
-                host, port_str = webui_addr.split(':', 1)
-                port = int(port_str)
-            except ValueError:
-                console.print("[red]Invalid port number in web UI address[/red]")
-                sys.exit(1)
-
-            from waitress import create_server  # type: ignore[attr-defined]
-
-            from web_ui.server import app, set_runtime_browse_roots
-
-            # Set browse roots for web UI
-            browse_roots = os.environ.get('UA_BROWSE_ROOTS', '').strip()
-            if not browse_roots and paths:
-                # Use the paths from command line as browse roots
-                browse_roots = ','.join(paths)
-            elif not browse_roots and meta.get('path'):
-                # Use the path from command line as browse roots
-                path_value = meta['path']
-                browse_roots = ','.join(str(p) for p in cast(list[Any], path_value)) if isinstance(path_value, list) else str(path_value)
-            if not browse_roots:
-                raise SystemExit("No browse roots specified. Please set UA_BROWSE_ROOTS environment variable or provide explicit paths.")
-
-            set_runtime_browse_roots(browse_roots)
-
-            try:
-                _webui_server = create_server(app, host=host, port=port)
-
-                # Build clickable URL (use localhost for 0.0.0.0 display)
-                display_host = "localhost" if host == "0.0.0.0" else host  # nosec B104
-                url = f"http://{display_host}:{port}"
-
-                console.print()
-                console.print("[green]Web UI server started[/green]")
-                console.print(f"[bold]Access at: [link={url}]{url}[/link][/bold]")
-                console.print("[dim]Press Ctrl+C to stop the server[/dim]")
-                console.print()
-
-                # Run server in daemon thread so main thread can handle signals
-                server_thread = threading.Thread(target=_webui_server.run, daemon=True)
-                server_thread.start()
-
-                # Wait for shutdown signal or unexpected thread death
-                while not _shutdown_event.is_set():
-                    if not server_thread.is_alive():
-                        raise RuntimeError("Web UI server thread exited unexpectedly")
-                    _shutdown_event.wait(timeout=1.0)
-
-                # Close server gracefully
-                _webui_server.close()
-                server_thread.join(timeout=5.0)
-
-            except Exception as e:
-                if not _shutdown_requested:
-                    console.print(f"[red]Web UI server error: {e}[/red]")
-                    sys.exit(1)
-            finally:
-                console.print("[yellow]Web UI server stopped[/yellow]")
-
-            return  # Exit early when running web UI only
 
         # Validate config structure and types (after args parsed so we have trackers list)
         from src.configvalidator import group_warnings, validate_config
@@ -2082,7 +1907,7 @@ def check_python_version() -> None:
 
 
 async def main() -> None:
-    # Reset global state for clean in-process runs (when called from web UI)
+    # Reset global state for a clean CLI run.
     _reset_shutdown_state()
 
     try:
@@ -2091,7 +1916,7 @@ async def main() -> None:
         if not _shutdown_requested:
             console.print("[red]Tasks were cancelled. Exiting safely.[/red]")
     except EOFError:
-        pass  # Web UI cancellation - handled silently
+        pass  # Non-interactive input ended; exit cleanly.
     except KeyboardInterrupt:
         pass  # Handled by signal handler
     except Exception as e:
@@ -2120,24 +1945,22 @@ if __name__ == "__main__":
         if not _shutdown_requested:
             console.print(f"[bold red]Critical error: {e}[/bold red]")
     finally:
-        # Only run async cleanup for non-webui mode (webui doesn't use asyncio)
-        if not _is_webui_mode:
-            try:
-                # Run cleanup with timeout to prevent hanging on shutdown
-                async def _cleanup_with_timeout() -> None:
-                    try:
-                        await asyncio.wait_for(cleanup_manager.cleanup(), timeout=10.0)
-                    except (asyncio.TimeoutError, asyncio.CancelledError):
-                        console.print("[yellow]Cleanup timed out or was cancelled, forcing exit...[/yellow]")
+        try:
+            # Run cleanup with timeout to prevent hanging on shutdown
+            async def _cleanup_with_timeout() -> None:
+                try:
+                    await asyncio.wait_for(cleanup_manager.cleanup(), timeout=10.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    console.print("[yellow]Cleanup timed out or was cancelled, forcing exit...[/yellow]")
 
-                asyncio.run(_cleanup_with_timeout())
-            except Exception:
-                pass  # Cleanup errors during shutdown are expected
+            asyncio.run(_cleanup_with_timeout())
+        except Exception:
+            pass  # Cleanup errors during shutdown are expected
 
         gc.collect()
         cleanup_manager.reset_terminal()
 
-        if _shutdown_requested or _is_webui_mode:
+        if _shutdown_requested:
             console.print("[green]Shutdown complete[/green]")
 
         sys.exit(0)

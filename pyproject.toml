@@ -30,7 +30,7 @@ select = [
 ignore = ["E501", "UP045"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["cogs", "data", "src", "web_ui"]
+known-first-party = ["cogs", "data", "src"]
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 
 [tool.pyright]

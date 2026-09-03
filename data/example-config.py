@@ -997,7 +997,7 @@ config = {
     # If you find issue, especially in local/remote path mapping, use the "--debug" argument to print out some related details
     "TORRENT_CLIENTS": {
         # Name your torrent clients here, for example, this example is named "qbittorrent" and is set as default_torrent_client above
-        # All options relate to the webui, make sure you have the webui secured if it has WAN access
+        # qBittorrent Web API connection and torrent search settings.
         # **DO NOT** modify torrent_client name, eg: "qbit"
         # See https://github.com/Audionut/Upload-Assistant/wiki
         "qbittorrent": {
@@ -1039,7 +1039,7 @@ config = {
             # Use local paths, remote path mapping will be handled.
             # only single \ on windows, path will be handled by UA
             "linked_folder": [""],
-            # Remote path mapping (docker/etc.) CASE SENSITIVE
+            # Remote path mapping (for seedboxes or other remote clients), CASE SENSITIVE
             "local_path": [""],
             "remote_path": [""],
             # only set qBitTorrent torrent_storage_dir if API searching does not work
@@ -1083,7 +1083,7 @@ config = {
             # Use local paths, remote path mapping will be handled.
             # only single \ on windows, path will be handled by UA
             "linked_folder": [""],
-            # Remote path mapping (docker/etc.) CASE SENSITIVE
+            # Remote path mapping (for seedboxes or other remote clients), CASE SENSITIVE
             "local_path": [""],
             "remote_path": [""],
         },
@@ -1095,7 +1095,7 @@ config = {
             "deluge_pass": "password",
             # path/to/session folder
             "torrent_storage_dir": "",
-            # Remote path mapping (docker/etc.) CASE SENSITIVE
+            # Remote path mapping (for seedboxes or other remote clients), CASE SENSITIVE
             "local_path": [""],
             "remote_path": [""],
         },
@@ -1111,7 +1111,7 @@ config = {
             #  path/to/config/torrents folder
             "torrent_storage_dir": "",
             "transmission_label": "",
-            # Remote path mapping (docker/etc.) CASE SENSITIVE
+            # Remote path mapping (for seedboxes or other remote clients), CASE SENSITIVE
             "local_path": [""],
             "remote_path": [""],
         },

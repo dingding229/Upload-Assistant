@@ -11,7 +11,6 @@ For further development, see https://github.com/autobrr/upbrr
 - Upload Assistant is not dead. I look forward to sharing a new chapter in the future.
 
 
-[![Create and publish a Docker image](https://github.com/Audionut/Upload-Assistant/actions/workflows/docker-image.yml/badge.svg?branch=master)](https://github.com/Audionut/Upload-Assistant/actions/workflows/docker-image.yml)
 [![Python Code Analysis](https://github.com/Audionut/Upload-Assistant/actions/workflows/python-code-analysis.yml/badge.svg?branch=master)](https://github.com/Audionut/Upload-Assistant/actions/workflows/python-code-analysis.yml)
 [![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org/downloads/)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
@@ -110,7 +109,6 @@ Many thanks to all who have contributed.
    - From the installation directory, run `python3 config-generator.py`
    - OR
    - Copy `data/example-config.py` to `data/config.py`, leaving `data/example-config.py` intact.
-   - NOTE: New users who use the webui will have the config file generated automatically.
    - Edit `config.py` to use your information (more detailed information in example config options: [docs/example-config.md](docs/example-config.md))
       - tmdb_api key can be obtained from https://www.themoviedb.org/settings/api
       - image host api keys can be obtained from their respective sites
@@ -134,14 +132,6 @@ Many thanks to all who have contributed.
   Args are OPTIONAL and ALWAYS follow path, for a list of acceptable args, pass `--help`.
   Path works best in quotes.
   - CLI arguments: [docs/cli-args.md](docs/cli-args.md)
-
-## **Docker Usage:**
-  Visit our wonderful [docker usage](docs/docker-wiki-full.md)
-
-  Also see this excellent video put together by a community member https://videos.badkitty.zone/ua
-
-  Web UI setup (Docker GUI / Unraid): [docs/docker-gui-wiki-full.md](docs/docker-gui-wiki-full.md)
-  Web UI docs: [docs/web-ui.md](docs/web-ui.md)
 
 ## **Attributions:**
 

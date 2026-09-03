@@ -281,13 +281,13 @@ This section defines one or more torrent clients. The name of each client block 
 - "qbittorrent" is an example of a torrent client name.
 - IMPORTANT: do not change the torrent_client attribute, for example `"torrent_client": "rtorrent",` or `"torrent_client": "qbit",`
 
-Security note: these settings can allow the app (and the Web UI) to interact with your torrent client. Do not expose your client’s Web UI to the public internet.
+Security note: these settings allow the app to interact with your torrent client through its Web API. Do not expose your client’s Web API to the public internet.
 
 ### qBittorrent (`torrent_client: "qbit"`)
 Typical keys:
 - `qui_proxy_url` (str): Optional. [QUI reverse proxy](https://getqui.com/docs/features/reverse-proxy) URL for qBittorrent. Create a **Client Proxy API Key** in QUI (**Settings → Client Proxy Keys**): name the client (e.g. "Upload Assistant"), choose the qBittorrent instance, then copy the generated proxy URL. Use the **full** URL, e.g. `http://localhost:7476/proxy/<client-api-key>`. The instance is fixed by the key you create. When set, `qbit_url` / `qbit_port` / `qbit_user` / `qbit_pass` are not used.
 - `enable_search` (bool): Search client for existing torrents to reuse hashes. NOTE: independant of auto_torrent_searching
-- `qbit_url` / `qbit_port` (str): Web UI host/port.
+- `qbit_url` / `qbit_port` (str): qBittorrent Web API host/port.
 - `qbit_user` / `qbit_pass` (str): Credentials.
 - `super_seed_trackers` (list[str]): Trackers to enable super-seeding on.
 - `use_tracker_as_tag` (bool): Tag torrents with tracker acronym.
@@ -297,7 +297,7 @@ Typical keys:
 - `linking` (str): `"symlink"`, `"hardlink"`, or empty to disable.
 - `allow_fallback` (bool): Fallback to original path injection if linking fails.
 - `linked_folder` (list[str]): Destination folder(s) for linked content. This is the top level directory that will contain the linked content.
-- `local_path` / `remote_path` (list[str]): Local/remote path mapping (docker/seedbox), case-sensitive. Local path is how UA sees the content, remote path is how the client sees the content.
+- `local_path` / `remote_path` (list[str]): Local/remote path mapping (for seedboxes or other remote clients), case-sensitive. Local path is how UA sees the content, remote path is how the client sees the content.
 - `torrent_storage_dir` (str, optional): Only needed if API searching doesn’t work. Falls back to search the client storage directory for existing torrents.
 
 ### ruTorrent / rTorrent

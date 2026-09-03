@@ -237,7 +237,7 @@ config = {
     # If you find issue, use the "--debug" command option to print out some related details
     "TORRENT_CLIENTS": {
         # Name your torrent clients here, for example, this example is named "Client1" and is set as default_torrent_client above
-        # All options relate to the webui, make sure you have the webui secured if it has WAN access
+        # qBittorrent Web API connection and torrent search settings.
         # See https://github.com/Audionut/Upload-Assistant/wiki
         "qbittorrent": {
             "torrent_client": "qbit",
