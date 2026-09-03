@@ -213,22 +213,21 @@ class TTG:
                         'red',
                     )
                 up = await client.post(url=url, data=data, files=files)
+                if str(up.url).startswith("https://totheglory.im/details.php?id="):
+                    tracker_status = cast(dict[str, Any], meta.get('tracker_status', {}))
+                    tracker_status.setdefault(self.tracker, {})
+                    tracker_status[self.tracker]['status_message'] = str(up.url)
+                    id_match = re.search(r"(id=)(\d+)", urlparse(str(up.url)).query)
+                    if not id_match:
+                        raise UploadException(  # noqa #F405
+                            f"Upload to TTG succeeded but torrent id missing from URL {up.url}",
+                            'red',
+                        )
+                    torrent_id = id_match.group(2)
+                    tracker_status[self.tracker]['torrent_id'] = torrent_id
+                    await self.download_new_torrent(torrent_id, torrent_path, client=client)
+                    return True
 
-            if str(up.url).startswith("https://totheglory.im/details.php?id="):
-                tracker_status = cast(dict[str, Any], meta.get('tracker_status', {}))
-                tracker_status.setdefault(self.tracker, {})
-                tracker_status[self.tracker]['status_message'] = str(up.url)
-                id_match = re.search(r"(id=)(\d+)", urlparse(str(up.url)).query)
-                if not id_match:
-                    raise UploadException(  # noqa #F405
-                        f"Upload to TTG succeeded but torrent id missing from URL {up.url}",
-                        'red',
-                    )
-                torrent_id = id_match.group(2)
-                tracker_status[self.tracker]['torrent_id'] = torrent_id
-                await self.download_new_torrent(torrent_id, torrent_path, client=client)
-                return True
-            else:
                 console.print(data)
                 console.print("\n\n")
                 raise UploadException(f"Upload to TTG Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa #F405
