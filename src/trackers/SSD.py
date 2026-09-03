@@ -24,7 +24,6 @@ class SSD(COMMON):
         self.anon = tracker_config.get('anon', True)
         self.offer = tracker_config.get('offer', True)
         self.passkey = tracker_config.get('passkey')
-        self.meta_script = str(tracker_config.get('meta_script', '')).strip()
         self.meta_timeout = int(tracker_config.get('meta_timeout', 30))
         self.upload_url = 'https://springsunday.net/takeupload.php'
         self.torrent_url = 'https://springsunday.net/details.php?id='

@@ -537,6 +537,18 @@ class DiscParse:
                             await asyncio.to_thread(Path(summary_file).write_text, bd_summary_cleaned, encoding="utf-8", errors="replace")
                             await asyncio.to_thread(Path(extended_summary_file).write_text, ext_bd_summary_cleaned, encoding="utf-8", errors="replace")
 
+                            # Preserve the complete BDInfoCli report for trackers
+                            # (such as M-Team) that require DISC INFO/PLAYLIST
+                            # REPORT/VIDEO/AUDIO/SUBTITLES/FILES sections.
+                            if i == 0 and idx == 0:
+                                report_for_tracker = ((text[:start_index] if start_index > 0 else "") + playlist_block).strip() + "\n"
+                                await asyncio.to_thread(
+                                    Path(save_dir, "BDINFO.txt").write_text,
+                                    report_for_tracker,
+                                    encoding="utf-8",
+                                    errors="replace",
+                                )
+
                             bdinfo = self.parse_bdinfo(bd_summary_cleaned, files_section, path)
 
                             # Prompt user for custom edition if conditions are met

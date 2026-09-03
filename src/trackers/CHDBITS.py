@@ -17,7 +17,6 @@ class CHDBITS():
         self.source_flag = 'CHDBITS'
         self.passkey = str(config['TRACKERS'].get('CHDBITS', {}).get('passkey', '')).strip()
         self.torrent_url = "https://ptchdbits.co/details.php?id="
-        self.meta_script = str(config['TRACKERS'].get('CHDBITS', {}).get('meta_script', '')).strip()
         self.meta_timeout = int(config['TRACKERS'].get('CHDBITS', {}).get('meta_timeout', 30))
         self.signature = None
         self.banned_groups = [""]

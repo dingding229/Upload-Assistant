@@ -21,7 +21,6 @@ class HDSKY:
         self.announce_url = str(
             config['TRACKERS'].get('HDSKY', {}).get('announce_url', 'https://tracker.hdsky.me/announce.php')
         ).strip()
-        self.meta_script = str(config['TRACKERS'].get('HDSKY', {}).get('meta_script', '')).strip()
         self.meta_timeout = int(config['TRACKERS'].get('HDSKY', {}).get('meta_timeout', 30))
         self.signature = None
         self.banned_groups = [""]

@@ -350,7 +350,7 @@ config = {
 
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: A4K, ACM, AITHER, ANT, AR, ASC, AZ, BHD, BHDTV, BJS, BLU, BT, CBR, CHDBITS, CZ, DC, DP, DT, EMUW, FF, FL, FNP, FRIKI, GPW, HDB, HDS, HDSKY, HDT, HHD, HUNO, IHD, IS, ITT, LCD, LDU, LST, LT, LUME, MTV, NBL, OE, OTW, OURBITS, PHD, PT, PTER, PTP, PTS, PTT, R4E, RAS, RF, RTF, SAM, SHRI, SN, SP, SPD, SSD, STC, THR, TIK, TL, TLZ, TOS, TTG, TTR, TVC, ULCX, UTP, YOINK, YUS
+        # Available tracker: A4K, ACM, AITHER, ANT, AR, ASC, AZ, BHD, BHDTV, BJS, BLU, BT, CBR, CHDBITS, CZ, DC, DP, DT, EMUW, FF, FL, FNP, FRIKI, GPW, HDB, HDS, HDSKY, HDT, HHD, HUNO, IHD, IS, ITT, LCD, LDU, LST, LT, LUME, MTEAM, MTV, NBL, OE, OTW, OURBITS, PHD, PT, PTER, PTP, PTS, PTT, R4E, RAS, RF, RTF, SAM, SHRI, SN, SP, SPD, SSD, STC, THR, TIK, TL, TLZ, TOS, TTG, TTR, TVC, ULCX, UTP, YOINK, YUS
         # Only add the trackers you want to upload to on a regular basis
         "default_trackers": "",
 
@@ -485,7 +485,6 @@ config = {
             # cookies need to be in netscape format and need to be in data/cookies/CHDBITS.txt
             "passkey": "",
             "announce_url": "https://ptchdbits.co/announce.php?passkey=<PASSKEY>",
-            "meta_script": "",
             "meta_timeout": 30,
         },
         "CZ": {
@@ -603,7 +602,6 @@ config = {
             # cookies need to be in netscape format and need to be in data/cookies/HDSKY.txt
             "passkey": "",
             "announce_url": "https://tracker.hdsky.me/announce.php",
-            "meta_script": "",
             "meta_timeout": 30,
         },
         "HDT": {
@@ -713,6 +711,15 @@ config = {
             # Iterate over found torrents and prefer MTV suitable torrents if found.
             'prefer_mtv_torrent': False,
         },
+        "MTEAM": {
+            "link_dir_name": "",
+            "api_base": "https://kp.m-team.cc/api",
+            "api_key": "",
+            "announce_url": "https://kp.m-team.cc/announce",
+            "source": 1,
+            "anon": False,
+            "ids": {},
+        },
         "NBL": {
             # Instead of using the tracker acronym for folder name when sym/hard linking, you can use a custom name
             "link_dir_name": "",
@@ -742,7 +749,6 @@ config = {
             # cookies need to be in netscape format and need to be in data/cookies/OURBITS.txt
             "passkey": "",
             "announce_url": "https://ourbits.club/announce.php",
-            "meta_script": "",
             "meta_timeout": 30,
         },
         "PHD": {
@@ -873,7 +879,6 @@ config = {
             "announce_url": "https://on.springsunday.net/announce.php",
             "anon": True,
             "offer": True,
-            "meta_script": "",
             "meta_timeout": 30,
         },
         "STC": {

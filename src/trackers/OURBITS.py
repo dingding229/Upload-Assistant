@@ -25,7 +25,6 @@ class OURBITS:
         self.announce_url = str(
             config['TRACKERS'].get('OURBITS', {}).get('announce_url', 'https://ourbits.club/announce.php')
         ).strip()
-        self.meta_script = str(config['TRACKERS'].get('OURBITS', {}).get('meta_script', '')).strip()
         self.meta_timeout = int(config['TRACKERS'].get('OURBITS', {}).get('meta_timeout', 30))
         self.signature = None
         self.banned_groups = [""]
