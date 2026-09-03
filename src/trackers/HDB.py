@@ -27,6 +27,7 @@ class HDB:
         self.config: Config = config
         self.tracker = 'HDB'
         self.source_flag = 'HDBits'
+        self.torrent_url = 'https://hdbits.org/details.php?id='
         tracker_config = config.get('TRACKERS', {}).get('HDB', {})
         tracker_config_dict = cast(dict[str, Any], tracker_config) if isinstance(tracker_config, dict) else {}
         self.username = str(tracker_config_dict.get('username', '')).strip()
@@ -338,13 +339,13 @@ class HDB:
             async with httpx.AsyncClient(cookies=cookies, timeout=30.0, follow_redirects=True) as client:
                 up = await client.post(url=url, data=data, files=files)
 
-            # Match url to verify successful upload
-            match = re.match(r".*?hdbits\.org/details\.php\?id=(\d+)&uploaded=(\d+)", str(up.url))
+            # Match the details URL and omit HDB's upload marker from output.
+            match = re.search(r"https?://hdbits\.org/details\.php\?id=(\d+)", str(up.url), re.IGNORECASE)
             if match:
-                meta['tracker_status'][self.tracker]['status_message'] = match.group(0)
-                if id_match := re.search(r"(id=)(\d+)", urlparse(str(up.url)).query):
-                    id = id_match.group(2)
-                    await self.download_new_torrent(id, torrent_file_path)
+                torrent_id = match.group(1)
+                meta['tracker_status'][self.tracker]['status_message'] = f"https://hdbits.org/details.php?id={torrent_id}"
+                meta['tracker_status'][self.tracker]['torrent_id'] = torrent_id
+                await self.download_new_torrent(torrent_id, torrent_file_path)
                 return True
             else:
                 console.print(data)
