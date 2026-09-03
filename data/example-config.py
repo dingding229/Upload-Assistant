@@ -717,6 +717,9 @@ config = {
         },
         "MTEAM": {
             "link_dir_name": "",
+            # Fill in the API address manually, for example:
+            # https://test2.m-team.cc/api or https://api.m-team.cc/api
+            "api_base_url": "",
             "api_key": "",
             "anon": False,
         },

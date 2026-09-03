@@ -9,6 +9,7 @@ import httpx
 from cogs.redaction import Redaction
 from src.console import console
 from src.get_desc import DescriptionBuilder
+from src.exceptions import UploadException
 from src.trackers.COMMON import COMMON
 
 Meta = dict[str, Any]
@@ -26,7 +27,7 @@ class MTEAM:
         self.common = COMMON(config)
         self.tracker = "MTEAM"
         self.base_url = "https://kp.m-team.cc"
-        self.api_base_url = "https://api.m-team.cc/api"
+        self.api_base_url = str(self.config["TRACKERS"][self.tracker].get("api_base_url", "")).strip().rstrip("/")
         self.torrent_url = f"{self.base_url}/detail/"
         self.banned_groups = [""]
         self.api_key = self.config["TRACKERS"][self.tracker].get("api_key")
@@ -264,6 +265,8 @@ class MTEAM:
         return (clean_to_int(v_raw, is_bdmv), clean_to_int(a_raw, is_bdmv))
 
     async def search_existing(self, meta: dict[str, Any], _) -> list[dict[str, Any]]:
+        if not self.api_base_url:
+            return []
         imdb_id = meta.get("imdb_info", {}).get("imdbID")
 
         if not imdb_id:
@@ -421,6 +424,8 @@ class MTEAM:
         return data
 
     async def upload(self, meta: Meta, _) -> bool:
+        if not self.api_base_url:
+            raise UploadException("M-Team API address is not configured; set TRACKERS.MTEAM.api_base_url", "red")
         data = await self.fetch_data(meta)
         response = None
 
