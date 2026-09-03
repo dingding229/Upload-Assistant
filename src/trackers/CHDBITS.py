@@ -177,7 +177,7 @@ class CHDBITS():
                 elif "该种子已存在" in resp.text:
                     existing_link = re.search(r'https://ptchdbits\.co/details\.php\?id=\d+', resp.text)
                     link_str = existing_link.group(0) if existing_link else "未知链接"
-                    console.print(f"[bold red]错误：该种子已在 CHDBITS 存在！[/bold red]")
+                    console.print("[bold red]错误：该种子已在 CHDBITS 存在！[/bold red]")
                     console.print(f"[red]已有种子链接: [yellow]{link_str}[/yellow][/red]")
                     return False
                 

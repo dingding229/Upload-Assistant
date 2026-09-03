@@ -8,7 +8,6 @@ import httpx
 
 from cogs.redaction import Redaction
 from src.console import console
-from src.get_desc import DescriptionBuilder
 from src.exceptions import UploadException
 from src.ptgen_api import get_ptgen_meta
 from src.trackers.COMMON import COMMON
@@ -31,7 +30,7 @@ class MTEAM:
         self.api_base_url = str(self.config["TRACKERS"][self.tracker].get("api_base_url", "")).strip().rstrip("/")
         self.torrent_url = f"{self.base_url}/detail/"
         self.banned_groups = [""]
-        self.api_key = self.config["TRACKERS"][self.tracker].get("api_key")
+        self.api_key = str(self.config["TRACKERS"][self.tracker].get("api_key") or "").strip()
         self.session = httpx.AsyncClient(
             headers={
                 "x-api-key": self.api_key,
@@ -119,9 +118,11 @@ class MTEAM:
         # it must not be duplicated in the public description.
         images = meta.get("image_list", [])
         if isinstance(images, list):
-            for image in images:
-                if isinstance(image, dict) and image.get("raw_url"):
-                    desc_parts.append(f"[img]{image['raw_url']}[/img]")
+            desc_parts.extend(
+                f"[img]{image['raw_url']}[/img]"
+                for image in images
+                if isinstance(image, dict) and image.get("raw_url")
+            )
         description = "\n\n".join(part for part in desc_parts if part.strip()).strip()
 
         async with aiofiles.open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", "w", encoding="utf-8") as description_file:
@@ -290,7 +291,7 @@ class MTEAM:
         vp8_9 = 21  # VP8/9
 
         codec = meta.get("video_codec", "").lower()
-        if codec in ("h264", "x264", "avc", "h.264", "h.265"):
+        if codec in ("h264", "x264", "avc", "h.264"):
             return x264
         elif codec in ("h265", "hevc", "x265"):
             return x265
@@ -326,12 +327,12 @@ class MTEAM:
         elif "dd " in codec:
             return ac3
 
+        elif "atmos" in codec and ("dd+" in codec or "e-ac-3" in codec or "eac3" in codec):
+            return atmos_eac3
         elif "dts-hd" in codec:
             return dts_hd_ma
         elif "dts" in codec:
             return dts
-        elif "atmos" in codec and "dd+" in codec:
-            return atmos_eac3
         elif "truehd" in codec:
             return true_hd
         else:
@@ -390,6 +391,8 @@ class MTEAM:
     async def upload(self, meta: Meta, _) -> bool:
         if not self.api_base_url:
             raise UploadException("M-Team API address is not configured; set TRACKERS.MTEAM.api_base_url", "red")
+        if not self.api_key:
+            raise UploadException("M-Team API key is not configured; set TRACKERS.MTEAM.api_key", "red")
         data = await self.fetch_data(meta)
         response = None
 

@@ -236,7 +236,7 @@ class OURBITS:
                             dupe_id = re.search(r"id=(\d+)", dupe_link['href']).group(1)
                     
                     if dupe_id:
-                        console.print(f"[bold red]错误：该种子已在 OURBITS 存在！[/bold red]")
+                        console.print("[bold red]错误：该种子已在 OURBITS 存在！[/bold red]")
                         console.print(f"[red]种子链接: [yellow]https://ourbits.club/details.php?id={dupe_id}[/yellow][/red]")
                         
                         # 重要：更新 meta 状态并返回 True（假装成功以阻止外部报错）
@@ -255,7 +255,7 @@ class OURBITS:
                     return True
                 
                 # --- 3. 真正失败 ---
-                console.print(f"[red]上传失败，详情见 tmp/OURBITS_ERROR.html[/red]")
+                console.print("[red]上传失败，详情见 tmp/OURBITS_ERROR.html[/red]")
                 with open(f"{meta['base_dir']}/tmp/OURBITS_ERROR.html", 'w', encoding='utf-8') as ef: ef.write(resp_text)
                 meta["tracker_status"][self.tracker] = {"upload": False, "success": False, "status_message": "Failed"}
                 return False

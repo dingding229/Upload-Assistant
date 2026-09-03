@@ -5,7 +5,7 @@ import json
 import os
 import re
 from typing import Any, Optional, cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import aiofiles
 import httpx

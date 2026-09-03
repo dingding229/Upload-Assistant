@@ -70,10 +70,10 @@ Many thanks to all who have contributed.
 |ItaTorrents|ITT|LastDigitalUnderground|LDU|
 |Lat-Team|LT|Locadora|LCD|
 |LST|LST|Luminarr|LUME|
-|MoreThanTV|MTV|Nebulance|NBL|
-|OldToonsWorld|OTW|OnlyEncodes+|OE|
-|OurBits|OURBITS|SpringSunDay|SSD|
-|PassThePopcorn|PTP|PolishTorrent|PTT|
+|MoreThanTV|MTV|M-Team|MTEAM|
+|Nebulance|NBL|OldToonsWorld|OTW|
+|OnlyEncodes+|OE|OurBits|OURBITS|
+|SpringSunDay|SSD|PassThePopcorn|PTP|
 |Portugas|PT|PrivateHD|PHD|
 |PTerClub|PTER|PTSKIT|PTS|
 |Racing4Everyone|R4E|Rastastugan|RAS|

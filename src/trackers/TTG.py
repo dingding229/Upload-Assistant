@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from unidecode import unidecode
 
 from src.console import console
-from src.exceptions import *  # noqa #F405
+from src.exceptions import UploadException
 from src.ptgen_api import get_ptgen_meta
 from src.trackers.COMMON import COMMON
 
@@ -227,7 +227,7 @@ class TTG:
                     tracker_status[self.tracker]['status_message'] = str(up.url)
                     id_match = re.search(r"(id=)(\d+)", urlparse(str(up.url)).query)
                     if not id_match:
-                        raise UploadException(  # noqa #F405
+                        raise UploadException(
                             f"Upload to TTG succeeded but torrent id missing from URL {up.url}",
                             'red',
                         )
@@ -238,7 +238,7 @@ class TTG:
 
                 console.print(data)
                 console.print("\n\n")
-                raise UploadException(f"Upload to TTG Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa #F405
+                raise UploadException(f"Upload to TTG Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')
 
     async def search_existing(self, meta: Meta, _disctype: str) -> list[str]:
         dupes: list[str] = []
