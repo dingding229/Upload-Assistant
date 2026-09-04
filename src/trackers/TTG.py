@@ -376,7 +376,6 @@ class TTG:
         parts.append(desc)
         images = cast(list[dict[str, Any]], meta.get('image_list', []))
         if images:
-            parts.append("[center]")
             screens = int(meta.get('screens', 0) or 0)
             for each in range(len(images[:screens])):
                 web_url = images[each].get('web_url')
@@ -384,7 +383,6 @@ class TTG:
                 if not web_url or not img_url:
                     continue
                 parts.append(f"[url={web_url}][img]{img_url}[/img][/url]")
-            parts.append("[/center]")
         if self.signature is not None:
             parts.append("\n\n")
             parts.append(self.signature)

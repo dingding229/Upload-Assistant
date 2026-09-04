@@ -582,7 +582,6 @@ class HDB:
             hdbimg_bbcode = await self.hdbimg_upload(meta)
             if hdbimg_bbcode is not None:
                 if meta.get('comparison', False):
-                    desc_parts.append("[center]")
                     desc_parts.append("[b]")
                     comparison_groups = meta.get('comparison_groups')
                     if isinstance(comparison_groups, dict):
@@ -603,9 +602,9 @@ class HDB:
 
                     desc_parts.append("\n\n")
                     desc_parts.append(f"{hdbimg_bbcode}")
-                    desc_parts.append("[/center]")
+
                 else:
-                    desc_parts.append(f"[center]{hdbimg_bbcode}[/center]")
+                    desc_parts.append(hdbimg_bbcode)
         else:
             images_value = meta.get('image_list', [])
             images_list: list[dict[str, Any]] = []
@@ -619,13 +618,11 @@ class HDB:
                     ]
                 )
             if images_list:
-                desc_parts.append("[center]")
                 screen_limit = int(meta.get('screens', 0) or 0)
                 for each in range(len(images_list[:screen_limit])):
                     img_url = str(images_list[each].get('img_url', ''))
                     web_url = str(images_list[each].get('web_url', ''))
                     desc_parts.append(f"[url={web_url}][img]{img_url}[/img][/url]")
-                desc_parts.append("[/center]")
 
         if self.signature is not None:
             desc_parts.append(self.signature)
