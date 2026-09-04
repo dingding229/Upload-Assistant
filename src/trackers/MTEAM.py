@@ -218,7 +218,21 @@ class MTEAM:
     async def search_existing(self, meta: dict[str, Any], _) -> list[dict[str, Any]]:
         if not self.api_base_url:
             return []
-        imdb_id = meta.get("imdb_info", {}).get("imdbID")
+        imdb_info = meta.get("imdb_info") if isinstance(meta.get("imdb_info"), dict) else {}
+        imdb_id = str(
+            imdb_info.get("imdbID")
+            or imdb_info.get("imdb_id")
+            or imdb_info.get("id")
+            or meta.get("imdb_id")
+            or meta.get("imdb")
+            or ""
+        ).strip()
+        if imdb_id.lower().startswith("tt"):
+            imdb_id = imdb_id[2:]
+        if imdb_id.isdigit() and int(imdb_id) > 0:
+            imdb_id = f"tt{imdb_id.zfill(7)}"
+        else:
+            imdb_id = ""
 
         if not imdb_id:
             print(f"[bold yellow]Cannot perform search on {self.tracker}: IMDb ID not found in metadata.[/bold yellow]")
