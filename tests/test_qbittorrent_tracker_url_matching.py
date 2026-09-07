@@ -2,6 +2,7 @@ import ast
 import asyncio
 import unittest
 from pathlib import Path
+from typing import Any
 
 
 def _load_match_tracker_url():
@@ -14,6 +15,7 @@ def _load_match_tracker_url():
     )
     namespace = {
         "asyncio": asyncio,
+        "Any": Any,
         "cast": lambda _type, value: value,
         "Redaction": type("Redaction", (), {"redact_private_info": staticmethod(str)}),
     }
