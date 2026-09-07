@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
 import re
+import weakref
+from copy import deepcopy
 from typing import Any
 
 import httpx
 
 
 PTGEN_API_URL = "https://ptgen.dingg.de/api/getData"
+
+# Tracker workers may receive deep copies of meta. Share requests by release
+# identity, not by the identity of that dict. Each event loop owns its cache.
+_caches: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
 def _imdb_sid(value: Any) -> str:
@@ -49,7 +57,40 @@ def _trans_titles(payload: dict[str, Any], bbcode: str) -> list[str]:
 
 
 async def get_ptgen_meta(meta: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
-    """Fetch and normalize PT-Gen metadata for a release."""
+    """Share one request per release/lookup across sequential or parallel trackers.
+
+    Results (including failures) are retained for this run, not written to disk.
+    Restarting the run retries failures. Return copies so tracker edits cannot
+    affect another tracker. Cancelling a waiter does not cancel the shared fetch.
+    """
+    loop = asyncio.get_running_loop()
+    results, pending = _caches.setdefault(loop, ({}, {}))
+    imdb_sid = _get_imdb_sid(meta)
+    douban_url = str(meta.get("douban_url") or "").strip()
+    lookup = ("imdb", imdb_sid) if imdb_sid else ("douban", douban_url)
+    release = str(meta.get("uuid") or meta.get("path") or "")
+    if not release:
+        # Without release identity, do not accidentally share across torrents.
+        return await _fetch_ptgen_meta(meta, timeout)
+    key = (os.path.abspath(str(meta.get("base_dir") or ".")), release, lookup)
+    if key in results:
+        return deepcopy(results[key])
+
+    async def fetch_once() -> dict[str, Any]:
+        try:
+            result = await _fetch_ptgen_meta(meta, timeout)
+            results[key] = result
+            return result
+        finally:
+            pending.pop(key, None)
+
+    if key not in pending:
+        pending[key] = loop.create_task(fetch_once())
+    return deepcopy(await asyncio.shield(pending[key]))
+
+
+async def _fetch_ptgen_meta(meta: dict[str, Any], timeout: float) -> dict[str, Any]:
+    """Fetch and normalize PT-Gen metadata (uncached transport)."""
     imdb_sid = _get_imdb_sid(meta)
     douban_url = str(meta.get("douban_url") or "").strip()
     if imdb_sid:
