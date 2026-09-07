@@ -373,7 +373,7 @@ class MTEAM:
         data = {
             # "torrent": 0,
             # "offer": 0,
-            "name": meta["name"],
+            "name": meta["name"].replace("Blu-ray", "BluRay"),
             "smallDescr": " / ".join(str(x) for x in ptgen.get("trans_title", []) if str(x).strip()) or str(meta.get("title", "")),
             "descr": await self.generate_description(meta),
             "category": self.get_category_id(meta),
