@@ -31,6 +31,12 @@ class TTG:
         self.signature = None
         self.banned_groups = [""]
 
+    @staticmethod
+    def _normalized_imdb_id(value: Any) -> str:
+        """Return TTG's required zero-padded ``tt`` IMDb identifier."""
+        digits = re.sub(r'^tt', '', str(value or '').strip(), flags=re.IGNORECASE)
+        return f"tt{digits.zfill(7)}" if digits.isdigit() and int(digits) != 0 else ""
+
     async def edit_name(self, meta: Meta) -> str:
         ttg_name = str(meta.get('name', ''))
 
@@ -154,8 +160,7 @@ class TTG:
             'file': (f"{torrentFileName}.torrent", torrent_bytes, "application/x-bittorent"),
             'nfo': ("torrent.nfo", mi_text)
         }
-        imdb_value = str(meta.get('imdb_id', '') or '').strip()
-        imdb_digits = re.sub(r'^tt', '', imdb_value, flags=re.IGNORECASE)
+        ttg_imdb_id = self._normalized_imdb_id(meta.get('imdb_id'))
         douban_id = str(meta.get('douban_id', '') or '').strip()
         if not douban_id:
             douban_url = str(meta.get('douban_url', '') or '').strip()
@@ -182,8 +187,8 @@ class TTG:
             if isinstance(ptgen_meta, dict):
                 data['subtitle'] = build_ptgen_subtitle(ptgen_meta, str(meta.get('title', '')))
         url = "https://totheglory.im/takeupload.php"
-        if imdb_digits.isdigit() and int(imdb_digits) != 0:
-            data['imdb_c'] = f"tt{imdb_digits}"
+        if ttg_imdb_id:
+            data['imdb_c'] = ttg_imdb_id
         if douban_id:
             data['douban_id'] = douban_id
 
@@ -217,24 +222,32 @@ class TTG:
                         'red',
                     )
                 up = await client.post(url=url, data=data, files=files)
-                if str(up.url).startswith("https://totheglory.im/details.php?id="):
+                torrent_id_match = re.search(r"details\.php\?id=(\d+)", str(up.url), flags=re.IGNORECASE)
+                if not torrent_id_match:
+                    # Some TTG responses remain on takeupload.php despite a
+                    # successful submission, but include the details URL in
+                    # their HTML body.
+                    torrent_id_match = re.search(r"details\.php\?id=(\d+)", up.text, flags=re.IGNORECASE)
+
+                if torrent_id_match:
                     tracker_status = cast(dict[str, Any], meta.get('tracker_status', {}))
                     tracker_status.setdefault(self.tracker, {})
-                    tracker_status[self.tracker]['status_message'] = str(up.url)
-                    id_match = re.search(r"(id=)(\d+)", urlparse(str(up.url)).query)
-                    if not id_match:
-                        raise UploadException(
-                            f"Upload to TTG succeeded but torrent id missing from URL {up.url}",
-                            'red',
-                        )
-                    torrent_id = id_match.group(2)
+                    torrent_id = torrent_id_match.group(1)
+                    tracker_status[self.tracker]['status_message'] = f"https://totheglory.im/details.php?id={torrent_id}"
                     tracker_status[self.tracker]['torrent_id'] = torrent_id
                     await self.download_new_torrent(torrent_id, torrent_path, client=client)
                     return True
 
-                console.print(data)
-                console.print("\n\n")
-                raise UploadException(f"Upload to TTG Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')
+                error_path = os.path.join(meta['base_dir'], 'tmp', meta['uuid'], 'TTG_UPLOAD_ERROR.html')
+                async with aiofiles.open(error_path, 'w', encoding='utf-8') as error_file:
+                    await error_file.write(up.text)
+                error_text = BeautifulSoup(up.text, 'lxml').get_text(' ', strip=True)
+                error_text = re.sub(r'\s+', ' ', error_text)[:300]
+                raise UploadException(
+                    f"Upload to TTG failed: {error_text or f'HTTP {up.status_code} at {up.url}'}. "
+                    f"Response saved to {error_path}",
+                    'red',
+                )
 
     async def search_existing(self, meta: Meta, _disctype: str) -> list[str]:
         dupes: list[str] = []
