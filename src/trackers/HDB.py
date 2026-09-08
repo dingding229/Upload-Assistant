@@ -36,6 +36,18 @@ class HDB:
         self.signature: Optional[str] = None
         self.banned_groups: list[str] = [""]
 
+    @staticmethod
+    def _imdb_original_title(imdb_info: Any) -> str:
+        """Prefer IMDb's explicit original-language title, with legacy fallbacks."""
+        if not isinstance(imdb_info, dict):
+            return ""
+        return str(
+            imdb_info.get('original_title')
+            or imdb_info.get('aka')
+            or imdb_info.get('title')
+            or ''
+        ).strip()
+
     async def get_type_category_id(self, meta: Meta) -> int:
         cat_id = 0
         # 6 = Audio Track
@@ -206,10 +218,13 @@ class HDB:
         else:
             hdb_name = hdb_name.replace(audio, audio.replace(' Atmos', ''))
         hdb_name = hdb_name.replace(meta.get('aka', ''), '')
-        if meta.get('imdb_info'):
-            hdb_name = hdb_name.replace(meta['title'], meta['imdb_info']['aka'])
-            if str(meta['year']) != str(meta.get('imdb_info', {}).get('year', meta['year'])) and str(meta['year']).strip() != '':
-                hdb_name = hdb_name.replace(str(meta['year']), str(meta['imdb_info']['year']))
+        imdb_info = meta.get('imdb_info')
+        original_title = self._imdb_original_title(imdb_info)
+        release_title = str(meta.get('title') or '')
+        if release_title and original_title:
+            hdb_name = hdb_name.replace(release_title, original_title, 1)
+        if isinstance(imdb_info, dict) and str(meta.get('year') or '') != str(imdb_info.get('year') or meta.get('year') or '') and str(meta.get('year') or '').strip() != '':
+            hdb_name = hdb_name.replace(str(meta['year']), str(imdb_info['year']))
         # Remove Dubbed/Dual-Audio from title
         hdb_name = hdb_name.replace('PQ10', 'HDR')
         hdb_name = hdb_name.replace('Dubbed', '').replace('Dual-Audio', '')

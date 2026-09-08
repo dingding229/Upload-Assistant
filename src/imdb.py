@@ -306,6 +306,9 @@ class ImdbManager:
         imdb_info['year'] = self.safe_get(title_data, ['releaseYear', 'year'])
         imdb_info['end_year'] = self.safe_get(title_data, ['releaseYear', 'endYear'])
         original_title = self.safe_get(title_data, ['originalTitleText', 'text'], '')
+        # Keep IMDb's original-language title separate from legacy ``aka``.
+        # Trackers that require the original title must not rely on an alias.
+        imdb_info['original_title'] = original_title or imdb_info['title']
         imdb_info['aka'] = original_title if original_title and original_title != imdb_info['title'] else imdb_info['title']
         imdb_info['type'] = self.safe_get(title_data, ['titleType', 'id'], None)
         runtime_seconds = self.safe_get(title_data, ['runtime', 'seconds'], 0)
