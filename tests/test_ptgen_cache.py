@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import httpx
 
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 
 
 class PtgenCacheTests(unittest.IsolatedAsyncioTestCase):
@@ -70,6 +70,16 @@ class PtgenCacheTests(unittest.IsolatedAsyncioTestCase):
         meta = {"uuid": "douban", "douban_url": "https://movie.douban.com/subject/123/"}
         await asyncio.gather(get_ptgen_meta(meta), get_ptgen_meta(deepcopy(meta)))
         self.assertEqual(self.calls, 1)
+
+    async def test_subtitle_uses_only_ptgen_title(self):
+        subtitle = build_ptgen_subtitle(
+            {"title": "世界将颤抖", "trans_title": ["撼世逃奔", "世界将颤抖", "撼世逃奔"]},
+            "Fallback",
+        )
+        self.assertEqual(subtitle, "世界将颤抖")
+
+    async def test_subtitle_falls_back_when_ptgen_has_no_titles(self):
+        self.assertEqual(build_ptgen_subtitle({"trans_title": []}, "Fallback"), "Fallback")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import httpx
 from src.trackers.COMMON import COMMON
 from src.exceptions import * # noqa E403
 from src.console import console
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 
 class CHDBITS():
 
@@ -122,7 +122,7 @@ class CHDBITS():
         ext_meta = meta.get('ptgen')
         if not isinstance(ext_meta, dict):
             ext_meta = await self.get_external_meta(meta)
-        small_descr = ' / '.join(ext_meta.get("trans_title", [])) if ext_meta.get("trans_title") else meta.get('title', '')
+        small_descr = build_ptgen_subtitle(ext_meta, str(meta.get('title', '')))
         raw_id = str(meta.get('imdb_id', '0')).replace('tt', '').strip()
         imdb_url = f"http://www.imdb.com/title/tt{raw_id.zfill(7)}/" if (raw_id.isdigit() and int(raw_id) != 0) else ""
 

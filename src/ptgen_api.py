@@ -56,6 +56,20 @@ def _trans_titles(payload: dict[str, Any], bbcode: str) -> list[str]:
     return [part.strip() for part in re.split(r"\\s*/\\s*", match.group(1)) if part.strip()]
 
 
+def _main_title(payload: dict[str, Any], bbcode: str) -> str:
+    """Return PT-Gen's ``片名`` field, with a formatted-text fallback."""
+    title = str(payload.get("chinese_title") or payload.get("title") or "").strip()
+    if title:
+        return title
+    match = re.search(r"^[ \t]*◎[ \t]*片[　 \t]*名[：:　 \t]+(.+)$", bbcode, flags=re.MULTILINE)
+    return match.group(1).strip() if match else ""
+
+
+def build_ptgen_subtitle(ptgen: dict[str, Any], fallback: str = "") -> str:
+    """Return only PT-Gen's ``片名``; fall back when it is unavailable."""
+    return str(ptgen.get("title") or fallback or "").strip()
+
+
 async def get_ptgen_meta(meta: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
     """Share one request per release/lookup across sequential or parallel trackers.
 
@@ -125,6 +139,7 @@ async def _fetch_ptgen_meta(meta: dict[str, Any], timeout: float) -> dict[str, A
     )
     result = dict(payload)
     result["bbcode"] = bbcode
+    result["title"] = _main_title(payload, bbcode)
     result["trans_title"] = _trans_titles(payload, bbcode)
     result["douban_url"] = str(payload.get("douban_link") or douban_url).strip()
     result["region"] = payload.get("region") or []

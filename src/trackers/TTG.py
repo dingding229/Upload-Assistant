@@ -12,7 +12,7 @@ from unidecode import unidecode
 
 from src.console import console
 from src.exceptions import UploadException
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 from src.trackers.COMMON import COMMON
 
 Meta = dict[str, Any]
@@ -180,11 +180,7 @@ class TTG:
         if not data['subtitle']:
             ptgen_meta = meta.get('ptgen')
             if isinstance(ptgen_meta, dict):
-                translated_titles = ptgen_meta.get('trans_title', [])
-                if isinstance(translated_titles, list):
-                    data['subtitle'] = ' / '.join(
-                        str(title).strip() for title in translated_titles if str(title).strip()
-                    )
+                data['subtitle'] = build_ptgen_subtitle(ptgen_meta, str(meta.get('title', '')))
         url = "https://totheglory.im/takeupload.php"
         if imdb_digits.isdigit() and int(imdb_digits) != 0:
             data['imdb_c'] = f"tt{imdb_digits}"

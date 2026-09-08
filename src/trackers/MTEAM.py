@@ -9,7 +9,7 @@ import httpx
 from cogs.redaction import Redaction
 from src.console import console
 from src.exceptions import UploadException
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 from src.trackers.COMMON import COMMON
 
 Meta = dict[str, Any]
@@ -374,7 +374,7 @@ class MTEAM:
             # "torrent": 0,
             # "offer": 0,
             "name": meta["name"].replace("Blu-ray", "BluRay"),
-            "smallDescr": " / ".join(str(x) for x in ptgen.get("trans_title", []) if str(x).strip()) or str(meta.get("title", "")),
+            "smallDescr": build_ptgen_subtitle(ptgen, str(meta.get("title", ""))),
             "descr": await self.generate_description(meta),
             "category": self.get_category_id(meta),
             # "source": 0,

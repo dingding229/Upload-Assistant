@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from src.trackers.COMMON import COMMON
 from src.exceptions import * # noqa E403
 from src.console import console
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 
 
 class OURBITS:
@@ -188,7 +188,7 @@ class OURBITS:
         
         desc_file = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
         ext_meta = meta.get('ptgen', {})
-        small_descr = ' / '.join(ext_meta.get("trans_title", [])) if ext_meta.get("trans_title") else meta.get('title', '')
+        small_descr = build_ptgen_subtitle(ext_meta, str(meta.get('title', '')))
         raw_id = str(meta.get('imdb_id', '0')).replace('tt', '').strip()
         imdb_url = f"http://www.imdb.com/title/tt{raw_id.zfill(7)}/" if (raw_id.isdigit() and int(raw_id) != 0) else ""
 

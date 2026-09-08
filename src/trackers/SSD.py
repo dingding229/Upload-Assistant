@@ -8,7 +8,7 @@ import cli_ui
 import subprocess
 
 from src.trackers.COMMON import COMMON
-from src.ptgen_api import get_ptgen_meta
+from src.ptgen_api import build_ptgen_subtitle, get_ptgen_meta
 
 
 class SSD(COMMON):
@@ -255,13 +255,7 @@ class SSD(COMMON):
 
     def _get_small_descr(self, meta):
         ext_meta = meta.get('ptgen', {}) if isinstance(meta.get('ptgen', {}), dict) else {}
-        trans_titles = ext_meta.get('trans_title', [])
-        if isinstance(trans_titles, str):
-            trans_titles = [trans_titles]
-        trans_titles = [t.strip() for t in trans_titles if str(t).strip()]
-        if trans_titles:
-            return " / ".join(trans_titles)
-        return str(meta.get('title') or meta.get('name', '')).strip()
+        return build_ptgen_subtitle(ext_meta, str(meta.get('title') or meta.get('name', '')).strip())
         
     def _get_year_from_meta(self, meta):
         year_value = meta.get('year') or meta.get('imdb_info', {}).get('year')
