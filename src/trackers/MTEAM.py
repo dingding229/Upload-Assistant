@@ -330,11 +330,14 @@ class MTEAM:
         dts_hd_ma = 11  # DTS-HD MA
         eac3 = 12  # E-AC3(DDP)
         atmos_eac3 = 13  # E-AC3 Atoms(DDP Atoms)
+        lpcm_pcm = 14  # LPCM/PCM
         true_hd = 9  # TrueHD
 
         codec = meta.get("audio", "").lower()
 
-        if "aac" in codec:
+        if "lpcm" in codec or "linear pcm" in codec or re.search(r"\bpcm\b", codec):
+            return lpcm_pcm
+        elif "aac" in codec:
             return aac
         elif "dd+" in codec:
             return eac3
