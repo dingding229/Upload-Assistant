@@ -24,6 +24,16 @@ PlaylistItem = dict[str, Any]
 PlaylistInfo = dict[str, Any]
 
 
+def compact_bdinfo_report(report: str) -> str:
+    """Keep the complete report through FILES, dropping verbose later sections."""
+    cut_at = len(report)
+    for section in ("CHAPTERS", "STREAM DIAGNOSTICS", "QUICK SUMMARY"):
+        match = re.search(rf"(?m)^\s*{re.escape(section)}:\s*$", report)
+        if match:
+            cut_at = min(cut_at, match.start())
+    return report[:cut_at].rstrip() + "\n"
+
+
 class DiscParse:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
@@ -541,7 +551,9 @@ class DiscParse:
                             # (such as M-Team) that require DISC INFO/PLAYLIST
                             # REPORT/VIDEO/AUDIO/SUBTITLES/FILES sections.
                             if i == 0 and idx == 0:
-                                report_for_tracker = ((text[:start_index] if start_index > 0 else "") + playlist_block).strip() + "\n"
+                                report_for_tracker = compact_bdinfo_report(
+                                    (text[:start_index] if start_index > 0 else "") + playlist_block
+                                )
                                 await asyncio.to_thread(
                                     Path(save_dir, "BDINFO.txt").write_text,
                                     report_for_tracker,
