@@ -417,8 +417,9 @@ class DiscParse:
                             )
 
                             async def read_progress() -> bytes:
-                                """Forward bdinfo's native progress output without rewriting it."""
+                                """Forward native bdinfo output and keep progress on one terminal line."""
                                 progress_chunks: list[bytes] = []
+                                progress_line_active = False
                                 if proc.stderr is None:
                                     return b""
                                 while True:
@@ -427,8 +428,20 @@ class DiscParse:
                                         break
                                     progress_chunks.append(line)
                                     progress_line = line.decode("utf-8", errors="replace").rstrip()
-                                    if progress_line:
+                                    if not progress_line:
+                                        continue
+                                    if re.match(r"^Scanning .* \| Progress: ", progress_line):
+                                        # The native scanner emits a new line for each update.
+                                        # Replace the previous update so only the latest one remains visible.
+                                        console.print(f"\r\033[K{progress_line}", end="", markup=False)
+                                        progress_line_active = True
+                                    else:
+                                        if progress_line_active:
+                                            console.print()
+                                            progress_line_active = False
                                         console.print(progress_line, markup=False)
+                                if progress_line_active:
+                                    console.print()
                                 return b"".join(progress_chunks)
 
                             if proc.stdout is None:
