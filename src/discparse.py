@@ -412,7 +412,7 @@ class DiscParse:
                                 f"(jobs={jobs}, progress enabled)...[/bold green]"
                             )
                             scan_started = time.monotonic()
-                            last_progress_output = scan_started
+                            last_progress_output = 0.0
 
                             def compact_progress(line: str) -> str | None:
                                 """Return only a concise progress value from bdinfo diagnostics."""
