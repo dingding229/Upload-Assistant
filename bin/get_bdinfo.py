@@ -31,7 +31,6 @@ def build_bdinfo_command(executable: str, disc_path: str, jobs: Optional[int] = 
         executable,
         "--report",
         "--no-mmap",
-        "--debug",
         "--jobs",
         str(get_bdinfo_jobs() if jobs is None else max(1, jobs)),
         disc_path,
