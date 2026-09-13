@@ -1595,7 +1595,6 @@ class PTP:
             cookies = {name: str(data.get('value', '')) for name, data in raw_cookies.items()}
             async with httpx.AsyncClient(cookies=cookies, timeout=60.0, follow_redirects=True) as client:
                 response = await client.post(url=url, data=data, headers=headers, files=files)
-            console.print(f"[cyan]{response.url}")
             responsetext = response.text
             # If the response contains our announce URL, then we are on the upload page and the upload wasn't successful.
             if responsetext.find(self.announce_url) != -1:
