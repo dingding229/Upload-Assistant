@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import re
+import time
 import traceback
 from collections import OrderedDict, defaultdict
 from glob import glob
@@ -395,7 +396,7 @@ class DiscParse:
                 for idx, playlist in enumerate(selected_playlists):
                     console.print(f"[bold green]Scanning playlist {playlist['file']} with duration {int(playlist['duration'] // 3600)} hours {int((playlist['duration'] % 3600) // 60)} minutes {int(playlist['duration'] % 60)} seconds")
                     playlist_number = os.path.splitext(playlist['file'])[0]
-                    playlist_report_path = os.path.join(save_dir, f"Disc{i + 1}_{playlist_number}_SHINYCHENG_BDINFO_FULL.txt")
+                    playlist_report_path = os.path.join(save_dir, f"Disc{i + 1}_{playlist_number}_BDINFO_FULL.txt")
 
                     if os.path.exists(playlist_report_path):
                         bdinfo_text = playlist_report_path
@@ -407,15 +408,39 @@ class DiscParse:
                             command_args = build_bdinfo_command(bdinfo_executable, path)
                             jobs = command_args[command_args.index("--jobs") + 1]
                             console.print(
-                                f"[bold green]Scanning {path} with shinycheng/bdinfo "
-                                f"(jobs={jobs})...[/bold green]"
+                                f"[bold green]Scanning {path} with bdinfo "
+                                f"(jobs={jobs}, debug progress enabled)...[/bold green]"
                             )
+                            scan_started = time.monotonic()
                             proc = await asyncio.create_subprocess_exec(
                                 *command_args,
                                 stdout=asyncio.subprocess.PIPE,
                                 stderr=asyncio.subprocess.PIPE,
                             )
-                            stdout, stderr = await proc.communicate()
+
+                            async def read_progress() -> bytes:
+                                progress_chunks: list[bytes] = []
+                                if proc.stderr is None:
+                                    return b""
+                                while True:
+                                    line = await proc.stderr.readline()
+                                    if not line:
+                                        break
+                                    progress_chunks.append(line)
+                                    progress_line = line.decode("utf-8", errors="replace").strip()
+                                    if progress_line:
+                                        elapsed = time.monotonic() - scan_started
+                                        console.print(f"[cyan][bdinfo +{elapsed:.1f}s] {progress_line}[/cyan]")
+                                return b"".join(progress_chunks)
+
+                            if proc.stdout is None:
+                                raise RuntimeError("bdinfo stdout pipe was not created")
+                            stdout_task = asyncio.create_task(proc.stdout.read())
+                            stderr_task = asyncio.create_task(read_progress())
+                            await proc.wait()
+                            stdout = await stdout_task
+                            stderr = await stderr_task
+                            elapsed = time.monotonic() - scan_started
                             report = stdout.decode("utf-8", errors="replace")
                             if proc.returncode != 0:
                                 error = stderr.decode("utf-8", errors="replace").strip()
@@ -424,6 +449,7 @@ class DiscParse:
                                     f"{': ' + error if error else ''}[/bold red]"
                                 )
                                 continue
+                            console.print(f"[green]bdinfo scan completed in {elapsed:.1f}s[/green]")
                             if not report.strip():
                                 console.print("[bold red]bdinfo returned an empty report.[/bold red]")
                                 continue
@@ -492,7 +518,7 @@ class DiscParse:
                             await asyncio.to_thread(Path(summary_file).write_text, bd_summary_cleaned, encoding="utf-8", errors="replace")
                             await asyncio.to_thread(Path(extended_summary_file).write_text, ext_bd_summary_cleaned, encoding="utf-8", errors="replace")
 
-                            # Preserve the complete shinycheng/bdinfo report for trackers
+                            # Preserve the complete bdinfo report for trackers
                             # (such as M-Team) that require DISC INFO/PLAYLIST
                             # REPORT/VIDEO/AUDIO/SUBTITLES/FILES sections.
                             if i == 0 and idx == 0:

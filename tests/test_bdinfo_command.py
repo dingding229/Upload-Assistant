@@ -13,6 +13,7 @@ class BDInfoCommandTests(unittest.TestCase):
                 "/usr/local/bin/bdinfo",
                 "--report",
                 "--no-mmap",
+                "--debug",
                 "--jobs",
                 "16",
                 "/media/disc/BDMV",
