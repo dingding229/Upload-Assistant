@@ -420,6 +420,7 @@ class DiscParse:
                                 """Forward native bdinfo output and keep progress on one terminal line."""
                                 progress_chunks: list[bytes] = []
                                 progress_line_active = False
+                                progress_display_width = 0
                                 if proc.stderr is None:
                                     return b""
                                 while True:
@@ -432,11 +433,14 @@ class DiscParse:
                                         continue
                                     if re.match(r"^Scanning .* \| Progress: ", progress_line):
                                         # The native scanner emits a new line for each update.
-                                        # Write the control sequence directly to the stream instead of
-                                        # using Rich, which strips ESC and leaves a literal ``[K``.
-                                        # This keeps all updates on one terminal line.
-                                        console.file.write(f"\r\033[2K{progress_line}")
+                                        # Write directly to the stream instead of using Rich.  Rich
+                                        # strips terminal control codes, which previously exposed ``[K``
+                                        # in the output.  Padding clears remnants without ANSI codes and
+                                        # keeps every update on one terminal line.
+                                        padding = max(0, progress_display_width - len(progress_line))
+                                        console.file.write(f"\r{progress_line}{' ' * padding}")
                                         console.file.flush()
+                                        progress_display_width = max(progress_display_width, len(progress_line))
                                         progress_line_active = True
                                     else:
                                         if progress_line_active:
