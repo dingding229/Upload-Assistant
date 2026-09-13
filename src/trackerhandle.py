@@ -98,7 +98,8 @@ async def process_trackers(
                     and "data error" not in str(status['status_message'])
                     and (print_messages or (print_links and 'torrent_id' not in status))
                 ):
-                    message = f"{tracker}: {Redaction.redact_private_info(status['status_message'])}"
+                    status_message = Redaction.redact_private_info(status['status_message'])
+                    message = status_message if tracker == "PTP" else f"{tracker}: {status_message}"
             else:
                 if 'status_message' in status and "data error" in str(status['status_message']):
                     console.print(f"[red]{tracker}: {str(status['status_message'])}[/red]")
