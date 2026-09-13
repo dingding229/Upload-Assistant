@@ -432,8 +432,11 @@ class DiscParse:
                                         continue
                                     if re.match(r"^Scanning .* \| Progress: ", progress_line):
                                         # The native scanner emits a new line for each update.
-                                        # Replace the previous update so only the latest one remains visible.
-                                        console.print(f"\r\033[K{progress_line}", end="", markup=False)
+                                        # Write the control sequence directly to the stream instead of
+                                        # using Rich, which strips ESC and leaves a literal ``[K``.
+                                        # This keeps all updates on one terminal line.
+                                        console.file.write(f"\r\033[2K{progress_line}")
+                                        console.file.flush()
                                         progress_line_active = True
                                     else:
                                         if progress_line_active:
