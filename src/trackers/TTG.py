@@ -135,12 +135,6 @@ class TTG:
             else 'yes'
         )
 
-        mi_path = (
-            f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt"
-            if meta['bdinfo'] is not None
-            else f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt"
-        )
-
         async with aiofiles.open(
             f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt",
             encoding='utf-8',
@@ -154,11 +148,8 @@ class TTG:
             torrentFileName = unidecode(os.path.basename(str(meta.get('video', ''))).replace(' ', '.'))
         else:
             torrentFileName = unidecode(os.path.basename(str(meta.get('path', ''))).replace(' ', '.'))
-        async with aiofiles.open(mi_path, encoding='utf-8') as mi_dump:
-            mi_text = await mi_dump.read()
         files = {
             'file': (f"{torrentFileName}.torrent", torrent_bytes, "application/x-bittorent"),
-            'nfo': ("torrent.nfo", mi_text)
         }
         ttg_imdb_id = self._normalized_imdb_id(meta.get('imdb_id'))
         douban_id = str(meta.get('douban_id', '') or '').strip()
