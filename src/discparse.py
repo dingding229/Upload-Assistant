@@ -409,9 +409,17 @@ class DiscParse:
                             jobs = command_args[command_args.index("--jobs") + 1]
                             console.print(
                                 f"[bold green]Scanning {path} with bdinfo "
-                                f"(jobs={jobs}, debug progress enabled)...[/bold green]"
+                                f"(jobs={jobs}, progress enabled)...[/bold green]"
                             )
                             scan_started = time.monotonic()
+                            last_progress_output = scan_started
+
+                            def compact_progress(line: str) -> str | None:
+                                """Return only a concise progress value from bdinfo diagnostics."""
+                                match = re.search(r"(?<!\d)(\d+(?:\.\d+)?)\s*%", line)
+                                if match:
+                                    return f"{match.group(1)}%"
+                                return None
                             proc = await asyncio.create_subprocess_exec(
                                 *command_args,
                                 stdout=asyncio.subprocess.PIPE,
@@ -419,6 +427,7 @@ class DiscParse:
                             )
 
                             async def read_progress() -> bytes:
+                                nonlocal last_progress_output
                                 progress_chunks: list[bytes] = []
                                 if proc.stderr is None:
                                     return b""
@@ -428,16 +437,28 @@ class DiscParse:
                                         break
                                     progress_chunks.append(line)
                                     progress_line = line.decode("utf-8", errors="replace").strip()
-                                    if progress_line:
+                                    progress_value = compact_progress(progress_line)
+                                    if progress_value:
                                         elapsed = time.monotonic() - scan_started
-                                        console.print(f"[cyan][bdinfo +{elapsed:.1f}s] {progress_line}[/cyan]")
+                                        last_progress_output = elapsed
+                                        console.print(f"[cyan][bdinfo +{elapsed:.1f}s] {progress_value}[/cyan]")
                                 return b"".join(progress_chunks)
 
                             if proc.stdout is None:
                                 raise RuntimeError("bdinfo stdout pipe was not created")
+                            async def show_scan_heartbeat() -> None:
+                                while True:
+                                    await asyncio.sleep(5)
+                                    elapsed = time.monotonic() - scan_started
+                                    if elapsed - last_progress_output >= 5:
+                                        console.print(f"[cyan][bdinfo +{elapsed:.1f}s] scanning...[/cyan]")
+
                             stdout_task = asyncio.create_task(proc.stdout.read())
                             stderr_task = asyncio.create_task(read_progress())
+                            heartbeat_task = asyncio.create_task(show_scan_heartbeat())
                             await proc.wait()
+                            heartbeat_task.cancel()
+                            await asyncio.gather(heartbeat_task, return_exceptions=True)
                             stdout = await stdout_task
                             stderr = await stderr_task
                             elapsed = time.monotonic() - scan_started
