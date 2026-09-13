@@ -133,9 +133,19 @@ Many thanks to all who have contributed.
   Path works best in quotes.
   - CLI arguments: [docs/cli-args.md](docs/cli-args.md)
 
+## **BDInfo dependency:**
+
+BDMV scanning uses [shinycheng/bdinfo](https://github.com/shinycheng/bdinfo). Install its `bdinfo` executable on the VPS and make it available on `PATH`, or place it at `bin/bdinfo/bdinfo`. You can also set `BDINFO_PATH` to an executable at another location.
+
+Each scan runs in report mode with memory mapping disabled and uses the maximum logical CPU count visible to the current VPS/container:
+
+```sh
+bdinfo --report --no-mmap --jobs <最大可用线程数> /path/to/BDMV
+```
+
 ## **Attributions:**
 
-Built with updated BDInfoCLI from https://github.com/rokibhasansagar/BDInfoCLI-ng
+Built with [shinycheng/bdinfo](https://github.com/shinycheng/bdinfo).
 
 <p>
   <a href="https://github.com/autobrr/mkbrr"><img src="https://github.com/autobrr/mkbrr/blob/main/.github/assets/mkbrr-dark.png?raw=true" alt="mkbrr" height="40px;"></a>&nbsp;&nbsp;

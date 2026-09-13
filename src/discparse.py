@@ -2,9 +2,7 @@
 import asyncio
 import json
 import os
-import platform
 import re
-import shutil
 import traceback
 from collections import OrderedDict, defaultdict
 from glob import glob
@@ -16,6 +14,7 @@ import defusedxml.ElementTree as ET
 from langcodes import Language
 from pymediainfo import MediaInfo
 
+from bin.get_bdinfo import BDInfoBinaryManager, build_bdinfo_command
 from bin.get_playlist import MplsParser
 from src.console import console
 from src.exportmi import setup_mediainfo_library
@@ -396,94 +395,40 @@ class DiscParse:
                 for idx, playlist in enumerate(selected_playlists):
                     console.print(f"[bold green]Scanning playlist {playlist['file']} with duration {int(playlist['duration'] // 3600)} hours {int((playlist['duration'] % 3600) // 60)} minutes {int(playlist['duration'] % 60)} seconds")
                     playlist_number = os.path.splitext(playlist['file'])[0]
-                    playlist_report_path = os.path.join(save_dir, f"Disc{i + 1}_{playlist_number}_FULL.txt")
+                    playlist_report_path = os.path.join(save_dir, f"Disc{i + 1}_{playlist_number}_SHINYCHENG_BDINFO_FULL.txt")
 
                     if os.path.exists(playlist_report_path):
                         bdinfo_text = playlist_report_path
                     else:
                         try:
-                            used_bdinfo_cli = False
-                            bdinfo_cli_path = os.path.join(base_dir, "bin", "BDInfoCli")
-                            bdinfo_cli_report_path = os.path.join(save_dir, f"Disc{i + 1}_BDINFOCLI_FULL.txt")
-                            if os.path.isfile(bdinfo_cli_path):
-                                regenerate_cli_report = True
-                                if os.path.exists(bdinfo_cli_report_path):
-                                    try:
-                                        existing_text = Path(bdinfo_cli_report_path).read_text(encoding="utf-8", errors="replace")
-                                        if "PLAYLIST:" in existing_text:
-                                            regenerate_cli_report = False
-                                    except Exception:
-                                        regenerate_cli_report = True
-                                if regenerate_cli_report:
-                                    console.print(f"[bold green]Scanning {path} with BDInfoCli...[/bold green]")
-                                    command_args = [
-                                        bdinfo_cli_path,
-                                        "-p",
-                                        path,
-                                        "-o",
-                                        bdinfo_cli_report_path,
-                                    ]
-                                    proc = await asyncio.create_subprocess_exec(*command_args)
-                                    await proc.wait()
-                                    if proc.returncode != 0 or not os.path.exists(bdinfo_cli_report_path):
-                                        console.print("[bold red]BDInfoCli failed to generate a report.[/bold red]")
-                                        continue
-                                bdinfo_text = bdinfo_cli_report_path
-                                used_bdinfo_cli = True
-
-                            if not used_bdinfo_cli:
-                                bdinfo_executable = None
-                                # Prefer the bundled bdinfo binary for the detected OS/arch
-                                system = platform.system().lower()
-                                machine = platform.machine().lower()
-                                if system == "linux":
-                                    if machine in ("x86_64", "amd64"):
-                                        folder = "linux/amd64"
-                                    elif machine in ("arm64", "aarch64"):
-                                        folder = "linux/arm64"
-                                    else:
-                                        folder = "linux/arm"
-                                    bdinfo_path = f"{base_dir}/bin/bdinfo/{folder}/bdinfo"
-                                    if os.path.exists(bdinfo_path):
-                                        bdinfo_executable = [bdinfo_path, path, '-m', playlist['file'], save_dir]
-                                elif system == "darwin":
-                                    folder = "macos/arm64" if machine in ("arm64",) else "macos/x86_64"
-                                    bdinfo_path = f"{base_dir}/bin/bdinfo/{folder}/bdinfo"
-                                    if os.path.exists(bdinfo_path):
-                                        bdinfo_executable = [bdinfo_path, path, '-m', playlist['file'], save_dir]
-                                elif system == "windows":
-                                    # Windows builds are provided as x64
-                                    bdinfo_path = f"{base_dir}/bin/bdinfo/windows/x86_64/bdinfo.exe"
-                                    if os.path.exists(bdinfo_path):
-                                        bdinfo_executable = [bdinfo_path, '-m', playlist['file'], path, save_dir]
-
-                                # Fallback to system-installed commands if bundled binary not present
-                                if bdinfo_executable is None:
-                                    if shutil.which("bdinfo"):
-                                        bdinfo_executable = ["bdinfo", path, '-m', playlist['file'], save_dir]
-                                    elif shutil.which("BDInfo"):
-                                        bdinfo_executable = ["BDInfo", path, '-m', playlist['file'], save_dir]
-                                    else:
-                                        console.print(f"[bold red]BDInfo not found. Please download bdinfo and place it under {base_dir}/bin/bdinfo/ or install a system bdinfo/BDInfo binary[/bold red]")
-                                        continue
-
-                                if bdinfo_executable:
-                                    proc = await asyncio.create_subprocess_exec(
-                                        *bdinfo_executable
-                                    )
-                                    await proc.wait()
-
-                                    if proc.returncode != 0:
-                                        console.print(f"[bold red]BDInfo failed with return code {proc.returncode}[/bold red]")
-                                        continue
-
-                                    # Rename the output to playlist_report_path
-                                    for file in os.listdir(save_dir):
-                                        if file.startswith("BDINFO") and file.endswith(".txt"):
-                                            bdinfo_text = os.path.join(save_dir, file)
-                                            shutil.move(bdinfo_text, playlist_report_path)
-                                            bdinfo_text = playlist_report_path  # Update bdinfo_text to the renamed file
-                                            break
+                            bdinfo_executable = await BDInfoBinaryManager.ensure_bdinfo_binary(
+                                base_dir, meta.get("debug", False)
+                            )
+                            command_args = build_bdinfo_command(bdinfo_executable, path)
+                            jobs = command_args[command_args.index("--jobs") + 1]
+                            console.print(
+                                f"[bold green]Scanning {path} with shinycheng/bdinfo "
+                                f"(jobs={jobs})...[/bold green]"
+                            )
+                            proc = await asyncio.create_subprocess_exec(
+                                *command_args,
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.PIPE,
+                            )
+                            stdout, stderr = await proc.communicate()
+                            report = stdout.decode("utf-8", errors="replace")
+                            if proc.returncode != 0:
+                                error = stderr.decode("utf-8", errors="replace").strip()
+                                console.print(
+                                    f"[bold red]bdinfo failed with return code {proc.returncode}"
+                                    f"{': ' + error if error else ''}[/bold red]"
+                                )
+                                continue
+                            if not report.strip():
+                                console.print("[bold red]bdinfo returned an empty report.[/bold red]")
+                                continue
+                            Path(playlist_report_path).write_text(report, encoding="utf-8")
+                            bdinfo_text = playlist_report_path
                         except Exception as e:
                             console.print(f"[bold red]Error scanning playlist {playlist['file']}: {e}")
                             continue
@@ -547,7 +492,7 @@ class DiscParse:
                             await asyncio.to_thread(Path(summary_file).write_text, bd_summary_cleaned, encoding="utf-8", errors="replace")
                             await asyncio.to_thread(Path(extended_summary_file).write_text, ext_bd_summary_cleaned, encoding="utf-8", errors="replace")
 
-                            # Preserve the complete BDInfoCli report for trackers
+                            # Preserve the complete shinycheng/bdinfo report for trackers
                             # (such as M-Team) that require DISC INFO/PLAYLIST
                             # REPORT/VIDEO/AUDIO/SUBTITLES/FILES sections.
                             if i == 0 and idx == 0:
